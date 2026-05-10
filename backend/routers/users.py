@@ -74,7 +74,9 @@ def admin_update_user(user_id: str, req: UpdateUserRequest, admin: User = Depend
     if not u: raise HTTPException(404)
     for k, v in req.dict(exclude_unset=True).items():
         if v is not None:
-            if k == "password": v = bcrypt.hashpw(v.encode(), bcrypt.gensalt()).decode()
+            if k == "password":
+                v = bcrypt.hashpw(v.encode(), bcrypt.gensalt()).decode()
+                k = "password_hash"
             if k == "vip_expires_at":
                 from datetime import datetime
                 v = datetime.fromisoformat(v.replace("Z", "+00:00")) if v else None
