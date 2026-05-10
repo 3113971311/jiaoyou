@@ -1,0 +1,22 @@
+# 生产环境请替换为实际域名
+# 开发环境直接用 localhost
+
+:80 {
+    # API 和 WebSocket
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
+
+    # 管理端 SPA
+    handle /admin* {
+        reverse_proxy backend:3000
+    }
+
+    # 用户端 SPA（兜底）
+    handle {
+        reverse_proxy backend:3000
+    }
+}

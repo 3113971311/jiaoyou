@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+*.log
+.turbo
+.DS_Store
+minio-data/
+postgres-data/
+redis-data/
+__pycache__/
+*.pyc
+*.db
+.pnpmfile-temp.json
+package-temp.json
+package-lock.json
