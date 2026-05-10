@@ -3,22 +3,22 @@
     <h2 style="margin-bottom:20px">匹配交友</h2>
 
     <div v-if="!status.isMatching && !status.isMatched">
-      <div class="glass-card" style="max-width:400px;margin:0 auto">
+      <div class="glass-card rw-sm mx-auto">
         <div style="margin-bottom:12px"><strong>匹配范围</strong><br/><el-radio-group v-model="scope"><el-radio value="city">同城</el-radio><el-radio value="province">同省</el-radio></el-radio-group></div>
         <div style="margin-bottom:20px"><strong>期望性别</strong><br/><el-radio-group v-model="preferGender"><el-radio value="male">男</el-radio><el-radio value="female">女</el-radio></el-radio-group></div>
         <el-button type="primary" size="large" @click="startMatch" :loading="matching" style="width:100%">开始匹配</el-button>
       </div>
     </div>
 
-    <div v-if="status.isMatching" class="glass-card" style="max-width:400px;margin:0 auto;padding:40px">
+    <div v-if="status.isMatching" class="glass-card rw-sm mx-auto" style="padding:40px">
       <el-icon :size="60" color="#007aff"><Loading /></el-icon>
       <h3 style="margin-top:16px">正在匹配...</h3>
       <p style="color:var(--text-secondary);margin:8px 0">{{ waitTime }}</p>
       <el-button @click="cancelMatch" :loading="cancelling">取消匹配</el-button>
     </div>
 
-    <div v-if="status.isMatched && status.matchedUser" class="glass-card" style="max-width:400px;margin:0 auto;padding:40px">
-      <h3 style="color:#34c759">配对成功!</h3>
+    <div v-if="status.isMatched && status.matchedUser" class="glass-card rw-sm mx-auto" style="padding:40px">
+      <h3 style="color:var(--success)">配对成功!</h3>
       <p style="font-size:18px;margin:8px 0">{{ status.matchedUser.nickname||status.matchedUser.username }}</p>
       <el-button type="primary" @click="$router.push('/chat')">去聊天</el-button>
       <el-button style="margin-top:8px" @click="closeMatch">重新匹配</el-button>

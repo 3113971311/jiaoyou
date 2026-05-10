@@ -2,11 +2,34 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import * as Icons from '@element-plus/icons-vue'
+import 'element-plus/theme-chalk/dark/css-vars.css'
+import {
+  Search, ChatDotSquare, Star, Money, StarFilled,
+  ArrowLeft, PictureFilled, Location, Loading, User,
+  Lock, Message, SwitchButton, Plus, Delete, Edit,
+  Camera, Close, Check, Clock, Upload, InfoFilled,
+  Warning, ArrowRight, Share, MoreFilled, Calendar,
+  Grid, List, Sort, Filter, Download, UploadFilled,
+  Bell, Position,
+} from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import './assets/global.css'
+
 const app = createApp(App)
-app.use(createPinia()); app.use(router); app.use(ElementPlus)
-for (const [k, c] of Object.entries(Icons)) app.component(k, c)
+app.use(createPinia())
+app.use(router)
+app.use(ElementPlus)
+
+const icons = {
+  Search, ChatDotSquare, Star, Money, StarFilled,
+  ArrowLeft, PictureFilled, Location, Loading, User,
+  Lock, Message, SwitchButton, Plus, Delete, Edit,
+  Camera, Close, Check, Clock, Upload, InfoFilled,
+  Warning, ArrowRight, Share, MoreFilled, Calendar,
+  Grid, List, Sort, Filter, Download, UploadFilled,
+  Bell, Position,
+}
+for (const [k, c] of Object.entries(icons)) app.component(k, c)
+
 app.mount('#app')

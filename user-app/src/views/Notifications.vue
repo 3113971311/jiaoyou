@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" style="max-width:600px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h2>通知</h2><el-button link type="primary" @click="readAll">全部已读</el-button>
     </div>
@@ -20,4 +20,4 @@ onMounted(async ()=>{ try { const r=await getNotifications(); items.value=r.data
 async function readOne(n) { if(!n.is_read) { await markRead(n.id); n.is_read=true } }
 async function readAll() { await markAllRead(); items.value.forEach(n=>n.is_read=true) }
 </script>
-<style scoped>.unread { opacity:1; background:rgba(0,122,255,0.04) }</style>
+<style scoped>.unread { opacity:1; background:var(--accent-light) }</style>

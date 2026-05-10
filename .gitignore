@@ -13,3 +13,4 @@ __pycache__/
 .pnpmfile-temp.json
 package-temp.json
 package-lock.json
+data/

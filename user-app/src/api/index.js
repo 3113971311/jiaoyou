@@ -57,9 +57,13 @@ export const uploadChatImage = (data) => api.post('/upload/chat-image', data)
 
 // Payment
 export const redeemCard = (data) => api.post('/cards/redeem', data)
-export const buyCard = (data) => api.post('/cards/buy', data)
 export const vipStatus = () => api.get('/vip/status')
 export const vipHistory = () => api.get('/vip/history')
+export const createPaymentOrder = (params) => api.post('/payment/orders', null, { params })
+export const alipayPay = (data) => api.post('/payment/alipay/pay', data)
+export const wechatPay = (data) => api.post('/payment/wechat/pay', data)
+export const devPay = (data) => api.post('/payment/dev-pay', data)
+export const getPaymentOrder = (id) => api.get(`/payment/orders/${id}`)
 
 // Reports
 export const submitReport = (data) => api.post('/reports', data)

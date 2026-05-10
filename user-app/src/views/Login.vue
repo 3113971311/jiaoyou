@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card glass-card">
-      <h2>交友聊天</h2>
+      <h2>拾光</h2>
       <el-tabs v-model="tab">
         <el-tab-pane label="登录" name="login">
           <el-form @submit.prevent="doLogin">

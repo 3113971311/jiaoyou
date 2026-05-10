@@ -1,8 +1,8 @@
 <template>
-  <div class="page-container" style="max-width:500px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <h2 style="text-align:center;margin-bottom:20px">VIP 会员</h2>
     <div class="glass-card" style="text-align:center;margin-bottom:16px">
-      <h3 v-if="auth.isVip" style="color:#34c759">VIP 已开通</h3><h3 v-else style="color:var(--text-secondary)">未开通VIP</h3>
+      <h3 v-if="auth.isVip" style="color:var(--success)">VIP 已开通</h3><h3 v-else style="color:var(--text-secondary)">未开通VIP</h3>
       <p v-if="auth.isVip" style="font-size:14px;color:var(--text-secondary)">到期：{{ new Date(auth.user.vip_expires_at).toLocaleDateString() }}（剩余{{remaining}}天）</p>
       <p v-else style="font-size:14px;color:var(--text-secondary)">开通VIP解锁所有功能</p>
     </div>

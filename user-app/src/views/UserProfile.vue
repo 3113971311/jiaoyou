@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" style="max-width:500px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <el-page-header @back="$router.back()" title="返回" />
     <div class="glass-card" style="text-align:center;margin-top:16px" v-if="user">
       <el-avatar :size="80" :src="user.avatar_url" />

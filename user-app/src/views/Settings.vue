@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" style="max-width:500px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <h2 style="margin-bottom:16px">编辑资料</h2>
     <div class="glass-card">
       <el-form label-width="60px">

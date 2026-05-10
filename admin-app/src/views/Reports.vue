@@ -2,12 +2,12 @@
   <div style="padding:24px">
     <h2 style="margin-bottom:16px">举报处理</h2>
     <el-table :data="items">
-      <el-table-column prop="reporter_id" label="举报人ID" width="200" />
-      <el-table-column prop="target_type" label="类型" width="80" />
-      <el-table-column prop="target_id" label="对象ID" width="200" />
-      <el-table-column prop="reason" label="原因" />
-      <el-table-column prop="status" label="状态" width="80"><template #default="{row}"><el-tag :type="row.status==='pending'?'warning':row.status==='handled'?'success':'info'" size="small">{{ row.status }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="140" v-if="filter==='pending'">
+      <el-table-column prop="reporter_id" label="举报人ID" min-width="120" />
+      <el-table-column prop="target_type" label="类型" min-width="60" />
+      <el-table-column prop="target_id" label="对象ID" min-width="120" />
+      <el-table-column prop="reason" label="原因" min-width="150" />
+      <el-table-column prop="status" label="状态" min-width="70"><template #default="{row}"><el-tag :type="row.status==='pending'?'warning':row.status==='handled'?'success':'info'" size="small">{{ row.status }}</el-tag></template></el-table-column>
+      <el-table-column label="操作" min-width="120" v-if="filter==='pending'">
         <template #default="{row}"><el-button size="small" type="success" @click="handle(row,'handle')">处理</el-button><el-button size="small" type="info" @click="handle(row,'dismiss')">驳回</el-button></template>
       </el-table-column>
     </el-table>

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" style="max-width:600px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <el-page-header @back="$router.back()" title="返回"><template #content>我的关注</template></el-page-header>
     <div v-if="!list.length" style="margin-top:40px"><el-empty description="暂无关注" /></div>
     <div v-for="u in list" :key="u.id" class="glass-card" style="margin-top:8px;display:flex;align-items:center;gap:12px;cursor:pointer" @click="$router.push('/profile/'+u.id)">

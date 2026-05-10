@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container" style="max-width:600px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <h2 style="margin-bottom:16px">消息</h2>
     <div v-if="!list.length" class="glass-card" style="text-align:center;padding:40px"><el-empty description="暂无会话" /></div>
     <div v-for="c in list" :key="c.id" class="glass-card" style="margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px" @click="$router.push('/chat/'+c.id)">

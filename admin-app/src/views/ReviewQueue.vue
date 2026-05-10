@@ -16,13 +16,13 @@
       </template>
     </div>
     <el-table :data="items" @selection-change="onSelect">
-      <el-table-column type="selection" width="40" />
-      <el-table-column label="缩略图" width="100">
-        <template #default="{row}"><el-image :src="imgUrl(row.thumbnail_url||row.image_url)" style="width:60px;height:60px;border-radius:8px" fit="cover" :preview-src-list="[imgUrl(row.image_url)]" /></template>
+      <el-table-column type="selection" min-width="35" />
+      <el-table-column label="缩略图" min-width="80">
+        <template #default="{row}"><el-image :src="imgUrl(row.thumbnail_url||row.image_url)" style="width:clamp(40px,8vw,60px);height:clamp(40px,8vw,60px);border-radius:8px" fit="cover" :preview-src-list="[imgUrl(row.image_url)]" /></template>
       </el-table-column>
-      <el-table-column prop="image_type" label="类型" width="80" />
-      <el-table-column label="提交时间" width="160"><template #default="{row}">{{ new Date(row.submitted_at).toLocaleString() }}</template></el-table-column>
-      <el-table-column label="操作" width="160">
+      <el-table-column prop="image_type" label="类型" min-width="60" />
+      <el-table-column label="提交时间" min-width="130"><template #default="{row}">{{ new Date(row.submitted_at).toLocaleString() }}</template></el-table-column>
+      <el-table-column label="操作" min-width="140">
         <template #default="{row}">
           <template v-if="filter==='pending'">
             <el-button size="small" type="success" @click="approve(row)">通过</el-button>

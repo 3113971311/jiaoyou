@@ -1,7 +1,7 @@
 <template>
-  <div class="page-container" style="max-width:500px;margin:0 auto">
+  <div class="page-container rw-md mx-auto">
     <div class="glass-card" style="text-align:center">
-      <el-image :src="auth.user?.avatar_url||''" style="width:80px;height:80px;border-radius:50%" @click="changeAvatar" />
+      <el-image :src="auth.user?.avatar_url||''" style="width:clamp(60px,10vw,80px);height:clamp(60px,10vw,80px);border-radius:50%" @click="changeAvatar" />
       <h3 style="margin-top:12px">{{ auth.user?.nickname||auth.user?.username }}</h3>
       <p v-if="auth.isVip" style="color:#ff9500;font-weight:600">VIP会员</p>
       <p v-if="auth.user?.location" style="color:var(--text-secondary);font-size:13px"><el-icon><Location /></el-icon> {{ auth.user.location }}</p>

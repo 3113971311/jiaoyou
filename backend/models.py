@@ -222,6 +222,21 @@ class VipOrder(Base):
     user = relationship("User", back_populates="vip_orders")
 
 
+class PaymentOrder(Base):
+    __tablename__ = "payment_orders"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    plan_days = Column(Integer, nullable=False)
+    amount = Column(Float, nullable=False)
+    email = Column(String(255), nullable=False)
+    payment_method = Column(String(20), nullable=False)
+    trade_no = Column(String(100))
+    status = Column(String(20), default="pending")
+    card_code = Column(String(50))
+    created_at = Column(DateTime, server_default=func.now())
+    paid_at = Column(DateTime)
+
+
 class Report(Base):
     __tablename__ = "reports"
     id = Column(String, primary_key=True, default=generate_uuid)

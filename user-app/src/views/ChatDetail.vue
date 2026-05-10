@@ -6,13 +6,13 @@
     </div>
     <div ref="msgBox" style="flex:1;overflow-y:auto;padding:12px 16px">
       <div v-for="m in messages" :key="m.id" :style="{display:'flex',justifyContent:m.sender_id===userId?'flex-end':'flex-start',marginBottom:'10px'}">
-        <div :style="{maxWidth:'70%',padding:'10px 14px',borderRadius:'12px',fontSize:'14px',lineHeight:'1.5',background:m.sender_id===userId?'var(--accent)':'#fff',color:m.sender_id===userId?'#fff':'var(--text)'}">
+        <div :style="{maxWidth:'70%',padding:'10px 14px',borderRadius:'12px',fontSize:'14px',lineHeight:'1.5',background:m.sender_id===userId?'var(--accent)':'var(--card-bg)',color:m.sender_id===userId?'#fff':'var(--text)'}">
           <div v-if="m.content_type==='text'">{{ m.content }}</div>
-          <el-image v-else-if="m.image_url" :src="m.image_url" style="max-width:200px;border-radius:8px" fit="contain" :preview-src-list="[m.image_url]" />
+          <el-image v-else-if="m.image_url" :src="m.image_url" style="max-width:min(200px,50vw);border-radius:8px" fit="contain" :preview-src-list="[m.image_url]" />
         </div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-top:1px solid rgba(0,0,0,0.05)">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card-bg);border-top:1px solid var(--card-border)">
       <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="sendImage" />
       <el-button link @click="fileInput.click()"><el-icon :size="22"><PictureFilled /></el-icon></el-button>
       <el-input v-model="text" placeholder="输入消息..." @keyup.enter="sendText" style="flex:1" />

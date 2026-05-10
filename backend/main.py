@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from models import init_db
 from routers import auth, users, follow, moments, moderation, match, chat, payment, cards, reports, notifications, feedback, site_config, dashboard
 
-app = FastAPI(title="交友聊天")
+app = FastAPI(title="拾光")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
