@@ -99,8 +99,8 @@ onUnmounted(() => clearInterval(bannerTimer))
   border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 16px;
-  aspect-ratio: 3 / 1;
-  max-height: 280px;
+  width: 100%;
+  height: clamp(160px, 28vw, 280px);
 }
 .banner-track {
   display: flex;
