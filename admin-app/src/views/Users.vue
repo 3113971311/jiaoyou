@@ -37,22 +37,43 @@
           <el-tag :type="row.status==='active'?'success':row.status==='banned'?'danger':'info'" size="small">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="240" fixed="right">
+      <el-table-column label="操作" min-width="260" fixed="right">
         <template #default="{row}">
           <div class="action-btns">
             <el-button size="small" type="info" @click="showDetail(row)">详情</el-button>
             <el-button size="small" @click="editUser(row)">编辑</el-button>
-            <el-button v-if="!row.is_admin" size="small" :type="row.status==='banned'?'success':'danger'" @click="toggleBan(row)">{{ row.status==='banned'?'解封':'封禁' }}</el-button>
-            <el-dropdown v-if="!row.is_admin" @command="c=>action(c,row)">
-              <el-button size="small">更多</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-if="row.vip_expires_at" command="removeVip">取消VIP</el-dropdown-item>
-                  <el-dropdown-item command="warn">发送警告</el-dropdown-item>
-                  <el-dropdown-item command="delete" style="color:var(--danger)">删除用户</el-dropdown-item>
-                </el-dropdown-menu>
+            <template v-if="!row.is_admin">
+              <template v-if="row.status==='active'">
+                <el-button size="small" type="danger" @click="setStatus(row,'banned')">封禁</el-button>
+                <el-dropdown @command="c=>action(c,row)">
+                  <el-button size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="row.vip_expires_at" command="removeVip">取消VIP</el-dropdown-item>
+                      <el-dropdown-item command="warn">发送警告</el-dropdown-item>
+                      <el-dropdown-item command="delete" style="color:var(--danger)">删除用户</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
               </template>
-            </el-dropdown>
+              <template v-else-if="row.status==='banned'">
+                <el-button size="small" type="success" @click="setStatus(row,'active')">恢复正常</el-button>
+                <el-dropdown @command="c=>action(c,row)">
+                  <el-button size="small">更多</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="row.vip_expires_at" command="removeVip">取消VIP</el-dropdown-item>
+                      <el-dropdown-item command="warn">发送警告</el-dropdown-item>
+                      <el-dropdown-item command="delete" style="color:var(--danger)">删除用户</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
+              <template v-else-if="row.status==='deleted'">
+                <el-button size="small" type="success" @click="setStatus(row,'active')">恢复用户</el-button>
+                <el-button size="small" type="danger" @click="action('permDelete',row)">永久删除</el-button>
+              </template>
+            </template>
           </div>
         </template>
       </el-table-column>
@@ -101,6 +122,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { adminListUsers, adminCreateUser, adminUpdateUser, adminDeleteUser, adminToggleStatus, adminRemoveVip, adminWarnUser } from '../api'
 import { getUser } from '../api'
+import api from '../api'
 
 const authStore = useAuthStore()
 
@@ -154,15 +176,20 @@ async function submit() {
   } catch(e) { ElMessage.error(e.response?.data?.detail||'操作失败') }
   finally { saving.value = false }
 }
-async function toggleBan(row) {
-  const s = row.status==='banned'?'active':'banned'
-  try { await adminToggleStatus(row.id, { status:s }); row.status = s; ElMessage.success(s==='banned'?'已封禁':'已解封') } catch {}
+async function setStatus(row, status) {
+  const labels = { active:'恢复', banned:'封禁', deleted:'删除' }
+  try {
+    await adminToggleStatus(row.id, { status })
+    row.status = status
+    ElMessage.success(`已${labels[status] || status}`)
+  } catch {}
 }
 async function showDetail(row) { try { const r = await getUser(row.id); detailUser.value = r.data; showDetailDlg.value = true } catch {} }
 function action(cmd, row) {
   if (cmd==='removeVip') removeVip(row)
   else if (cmd==='warn') warnUser(row)
   else if (cmd==='delete') deleteUser(row)
+  else if (cmd==='permDelete') permDelete(row)
 }
 async function removeVip(row) { try { await adminRemoveVip(row.id); row.vip_expires_at=null; ElMessage.success('VIP已移除') } catch {} }
 async function warnUser(row) {
@@ -175,8 +202,15 @@ async function warnUser(row) {
 }
 async function deleteUser(row) {
   try {
-    await ElMessageBox.confirm(`确定删除 "${row.username}" 吗？`,'确认删除',{type:'warning',confirmButtonText:'确认删除',cancelButtonText:'取消'})
+    await ElMessageBox.confirm(`确定删除 "${row.username}" 吗？（可恢复）`,'确认删除',{type:'warning',confirmButtonText:'确认删除',cancelButtonText:'取消'})
     await adminDeleteUser(row.id); ElMessage.success('已删除'); load()
+  } catch {}
+}
+async function permDelete(row) {
+  try {
+    await ElMessageBox.confirm(`永久删除 "${row.username}" 将无法恢复，确定？`,'永久删除',{type:'error',confirmButtonText:'永久删除',cancelButtonText:'取消'})
+    await api.delete(`/admin/users/${row.id}/permanent`)
+    ElMessage.success('已永久删除'); load()
   } catch {}
 }
 </script>

@@ -12,7 +12,7 @@
     </div>
 
     <!-- Step: Plan selection -->
-    <el-row :gutter="16" v-if="!orderId && !devDone">
+    <el-row :gutter="16" v-if="!devDone">
       <el-col :xs="24" :sm="12" :md="8" :lg="8" v-for="p in plans" :key="p.days" style="margin-bottom:16px">
         <div class="plan-card" :class="{ selected: selected === p.days }" @click="selected = p.days">
           <div class="plan-badge" v-if="p.badge">{{ p.badge }}</div>
@@ -27,7 +27,7 @@
     </el-row>
 
     <!-- Step: Payment method & email -->
-    <div v-if="!orderId && !devDone" class="glass-card" style="max-width:520px;margin:0 auto">
+    <div v-if="!devDone" class="glass-card" style="max-width:520px;margin:0 auto">
       <div style="margin-bottom:16px">
         <div style="font-weight:600;margin-bottom:8px;font-size:15px">接收邮箱</div>
         <el-input v-model="email" placeholder="卡密将发送到此邮箱" size="large" />
@@ -55,15 +55,6 @@
       </el-button>
     </div>
 
-    <!-- Processing -->
-    <div v-if="orderId && !devDone" class="glass-card" style="max-width:520px;margin:0 auto;text-align:center;padding:40px">
-      <el-icon :size="48" color="var(--accent)" style="animation:spin 1s linear infinite"><Loading /></el-icon>
-      <h3 style="margin-top:16px">正在处理支付...</h3>
-      <p style="color:var(--text-secondary);margin:8px 0">如果未自动跳转，请点击下方按钮</p>
-      <el-button type="primary" size="large" @click="goPay" style="margin-top:8px">前往支付页面</el-button>
-      <el-button size="small" @click="resetPay" style="margin-top:8px;display:block;margin:8px auto 0">取消订单</el-button>
-    </div>
-
     <!-- Dev mode done / Success -->
     <div v-if="devDone" class="glass-card" style="max-width:520px;margin:0 auto;text-align:center;padding:40px">
       <div style="font-size:48px;margin-bottom:12px">✅</div>
@@ -83,8 +74,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
-import { createPaymentOrder, alipayPay, devPay, getPaymentOrder } from '../api'
+import { createPaymentOrder, alipayPay, devPay } from '../api'
 
 const plans = [
   { days: 7, price: 9.9, desc: '体验套餐', badge: '试用' },
@@ -98,8 +88,6 @@ const selected = ref(30)
 const email = ref('')
 const method = ref('alipay')
 const paying = ref(false)
-const orderId = ref('')
-const payUrl = ref('')
 const devDone = ref(false)
 const devCode = ref('')
 
@@ -109,50 +97,35 @@ async function startPay() {
   if (!email.value) { ElMessage.warning('请输入邮箱'); return }
   paying.value = true
   try {
-    // Create order
     const { data: ord } = await createPaymentOrder({ days: selected.value, email: email.value, method: method.value })
-    orderId.value = ord.order_id
 
-    try {
-      if (method.value === 'alipay') {
+    if (method.value === 'alipay') {
+      try {
         const { data: r } = await alipayPay({ order_id: ord.order_id })
-        payUrl.value = r.pay_url
-        // Auto-redirect to Alipay
-        window.open(r.pay_url, '_blank')
-      } else if (method.value === 'wechat') {
-        ElMessage.info('微信支付开发中，使用模拟支付')
-        const { data: r } = await devPay({ order_id: ord.order_id })
-        devDone.value = true
-        devCode.value = r.card_code
-        orderId.value = ''
+        // Redirect current page to Alipay payment
+        window.location.href = r.pay_url
+      } catch (e) {
+        if (e.response?.status === 400) {
+          ElMessage.info(e.response?.data?.detail || '支付渠道未配置，使用模拟支付')
+          const { data: r } = await devPay({ order_id: ord.order_id })
+          devDone.value = true
+          devCode.value = r.card_code
+        } else { throw e }
       }
-    } catch (e) {
-      // If payment gateway not configured, fall back to dev mode
-      if (e.response?.status === 400) {
-        ElMessage.info(e.response?.data?.detail || '支付渠道未配置，使用模拟支付')
-        const { data: r } = await devPay({ order_id: ord.order_id })
-        devDone.value = true
-        devCode.value = r.card_code
-        orderId.value = ''
-      } else {
-        throw e
-      }
+    } else {
+      ElMessage.info('微信支付开发中，使用模拟支付')
+      const { data: r } = await devPay({ order_id: ord.order_id })
+      devDone.value = true
+      devCode.value = r.card_code
     }
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '支付失败')
-    orderId.value = ''
   } finally {
     paying.value = false
   }
 }
 
-function goPay() {
-  if (payUrl.value) window.open(payUrl.value, '_blank')
-}
-
 function resetPay() {
-  orderId.value = ''
-  payUrl.value = ''
   devDone.value = false
   devCode.value = ''
 }

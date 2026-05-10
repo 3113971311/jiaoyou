@@ -4,16 +4,20 @@
       <span style="color:var(--accent);font-weight:600">开通VIP会员，解锁全部功能 →</span>
     </div>
 
-    <!-- Banner carousel -->
-    <div v-if="banners.length" class="banner-wrap">
+    <!-- Banner carousel - always show, with defaults -->
+    <div class="banner-wrap">
       <div class="banner-track" :style="{ transform: `translateX(-${bannerIdx * 100}%)` }">
-        <div v-for="(b, i) in banners" :key="i" class="banner-slide"
-          :style="{ backgroundImage: `url(${b.url})` }"
-          @click="b.link && (b.link.startsWith('/') ? $router.push(b.link) : window.open(b.link, '_blank'))">
+        <div v-for="(b, i) in displayBanners" :key="i" class="banner-slide" :class="{ 'banner-placeholder': b.isPlaceholder }"
+          :style="b.url ? { backgroundImage: `url(${b.url})` } : {}"
+          @click="b.link && (b.link.startsWith('/') ? $router.push(b.link) : b.link.startsWith('http') ? window.open(b.link, '_blank') : null)">
+          <div v-if="b.isPlaceholder" class="banner-content">
+            <div class="banner-title">拾光</div>
+            <div class="banner-subtitle">遇见美好，拾取时光</div>
+          </div>
         </div>
       </div>
-      <div v-if="banners.length > 1" class="banner-dots">
-        <span v-for="(b, i) in banners" :key="i" class="banner-dot" :class="{ active: i === bannerIdx }" @click="bannerIdx = i"></span>
+      <div v-if="displayBanners.length > 1" class="banner-dots">
+        <span v-for="(b, i) in displayBanners" :key="i" class="banner-dot" :class="{ active: i === bannerIdx }" @click="bannerIdx = i"></span>
       </div>
     </div>
 
@@ -42,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getFeed, getSiteConfig } from '../api'
 import { Search, ChatDotSquare, Star, Money } from '@element-plus/icons-vue'
@@ -53,6 +57,17 @@ const homeNotice = ref('')
 const banners = ref([])
 const bannerIdx = ref(0)
 let bannerTimer = null
+
+const DEFAULT_BANNERS = [
+  { isPlaceholder: true, color1: '#0a84ff', color2: '#5e5ce6' },
+  { isPlaceholder: true, color1: '#5e5ce6', color2: '#30d158' },
+  { isPlaceholder: true, color1: '#ff9f0a', color2: '#ff453a' },
+]
+
+const displayBanners = computed(() => {
+  if (banners.value.length) return banners.value
+  return DEFAULT_BANNERS
+})
 
 const shortcuts = [
   { label: '匹配', icon: Search, path: '/match', color: '#0a84ff' },
@@ -70,9 +85,10 @@ onMounted(async () => {
       try { banners.value = JSON.parse(r.data.home_banners.value) } catch {}
     }
   } catch {}
-  if (banners.value.length > 1) {
-    bannerTimer = setInterval(() => { bannerIdx.value = (bannerIdx.value + 1) % banners.value.length }, 4000)
-  }
+  bannerTimer = setInterval(() => {
+    const total = displayBanners.value.length
+    if (total > 1) bannerIdx.value = (bannerIdx.value + 1) % total
+  }, 4000)
 })
 onUnmounted(() => clearInterval(bannerTimer))
 </script>
@@ -98,6 +114,16 @@ onUnmounted(() => clearInterval(bannerTimer))
   background-position: center;
   cursor: pointer;
 }
+.banner-placeholder {
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.banner-content { text-align: center; color: #fff; }
+.banner-title { font-size: 36px; font-weight: 700; letter-spacing: 2px; }
+.banner-subtitle { font-size: 16px; opacity: 0.8; margin-top: 8px; }
 .banner-dots {
   position: absolute;
   bottom: 10px;

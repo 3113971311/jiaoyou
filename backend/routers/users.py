@@ -106,3 +106,13 @@ def admin_delete_user(user_id: str, admin: User = Depends(get_admin_user), db: S
     target.status = "deleted"
     db.commit()
     return {"message": "已删除"}
+
+@router.delete("/admin/users/{user_id}/permanent")
+def admin_permanent_delete(user_id: str, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target: raise HTTPException(404)
+    if target.is_admin: raise HTTPException(400, "不能删除管理员账号")
+    if target.id == admin.id: raise HTTPException(400, "不能删除自己的账号")
+    db.delete(target)
+    db.commit()
+    return {"message": "已永久删除"}

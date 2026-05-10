@@ -121,6 +121,9 @@ h1, h2, h3, h4, .navbar .logo, .navbar .nav-links a, .menu-item,
   box-shadow: none !important;
   transition: all 0.3s;
 }
+.el-input__inner {
+  color: var(--text) !important;
+}
 .el-input__wrapper:hover,
 .el-input__wrapper.is-focus,
 .el-textarea__inner:focus {
