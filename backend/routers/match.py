@@ -1,32 +1,42 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from database import get_db
-from models import MatchQueue, MatchDailyCount, User, Conversation, Message, Notification
+from models import MatchQueue, MatchDailyCount, User, Conversation, Message, Notification, SiteConfig
 from schemas import StartMatchRequest
-from auth import get_current_user, get_vip_user
+from auth import get_current_user, get_vip_user, get_admin_user
 from datetime import datetime, timedelta
-import httpx
 
 router = APIRouter(tags=["match"])
 
+def get_amap_key(db: Session):
+    cfg = db.query(SiteConfig).filter(SiteConfig.config_key == "amap_key").first()
+    return cfg.config_value if cfg and cfg.config_value else ""
+
 def reverse_geocode(lat: float, lng: float):
+    """高德逆地理编码"""
     try:
         import requests
-        r = requests.get(f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&accept-language=zh",
-                        headers={"User-Agent": "FriendChat/1.0"}, timeout=5)
+        from database import get_db
+        db = next(get_db())
+        key = get_amap_key(db)
+        db.close()
+        if not key: return "", "", ""
+        r = requests.get("https://restapi.amap.com/v3/geocode/regeo",
+                         params={"key": key, "location": f"{lng},{lat}", "extensions": "base"},
+                         timeout=5)
         if r.ok:
-            addr = r.json().get("address", {})
-            # 精确到区/县
-            district = addr.get("district") or addr.get("county") or addr.get("city_district") or addr.get("suburb") or ""
-            city = addr.get("city") or addr.get("town") or ""
-            province = addr.get("state") or addr.get("province") or ""
-            # 组装完整地址
-            parts = [p for p in [province, city, district] if p]
-            location_str = ", ".join(parts) if parts else ""
-            # 省简称用于匹配
-            province_short = province.replace("省","").replace("市","").strip() if province else ""
-            city_short = city.replace("市","").strip() if city else ""
-            return location_str, province_short, district
+            data = r.json()
+            if data.get("status") == "1":
+                comp = data.get("regeocode", {}).get("addressComponent", {})
+                province = comp.get("province", "")
+                city = comp.get("city", "") or province
+                district = comp.get("district", "")
+                # 短名称
+                province_short = province.replace("省", "").replace("市", "").strip() if province else ""
+                city_short = city.replace("市", "").strip() if city else ""
+                parts = [p for p in [province, city, district] if p and p]
+                location_str = ", ".join(parts) if parts else ""
+                return location_str, province_short, district
     except: pass
     return "", "", ""
 
@@ -116,19 +126,19 @@ def geocode_search(q: str = ""):
     return {"lat": None, "lng": None}
 
 @router.get("/geocode/reverse")
-def geocode_reverse(lat: float = 0, lng: float = 0):
-    """根据经纬度反查地址（免登录）"""
+def geocode_reverse(lat: float = 0, lng: float = 0, db: Session = Depends(get_db)):
+    """高德逆地理编码（免登录）"""
     if not lat or not lng: return {"location": ""}
+    key = get_amap_key(db)
+    if not key: return {"location": ""}
     try:
         import requests
-        r = requests.get(f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&accept-language=zh",
-                        headers={"User-Agent": "FriendChat/1.0"}, timeout=5)
-        if r.ok:
-            addr = r.json().get("address", {})
-            district = addr.get("district") or addr.get("county") or addr.get("city_district") or addr.get("suburb") or ""
-            city = addr.get("city") or addr.get("town") or ""
-            province = addr.get("state") or addr.get("province") or ""
-            parts = [p for p in [province, city, district] if p]
+        r = requests.get("https://restapi.amap.com/v3/geocode/regeo",
+                         params={"key": key, "location": f"{lng},{lat}", "extensions": "base"},
+                         timeout=5)
+        if r.ok and r.json().get("status") == "1":
+            comp = r.json().get("regeocode", {}).get("addressComponent", {})
+            parts = [p for p in [comp.get("province", ""), comp.get("city", "") or comp.get("province", ""), comp.get("district", "")] if p]
             return {"location": ", ".join(parts) if parts else ""}
     except: pass
     return {"location": ""}
@@ -139,30 +149,79 @@ def ip_locate(ip: str = ""):
     if not ip: return {"lat": None, "lng": None, "location": ""}
     try:
         import requests
-        r = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
+        r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,lat,lon,city,regionName,country", timeout=5)
         if r.ok:
             d = r.json()
-            if d.get("latitude") and d.get("longitude"):
-                parts = [p for p in [d.get("region"), d.get("city")] if p]
-                return {"lat": float(d["latitude"]), "lng": float(d["longitude"]),
+            if d.get("status") == "success":
+                parts = [p for p in [d.get("regionName"), d.get("city")] if p]
+                return {"lat": float(d["lat"]), "lng": float(d["lon"]),
                         "location": ", ".join(parts) if parts else ""}
     except: pass
     return {"lat": None, "lng": None, "location": ""}
 
 @router.get("/geocode/my-ip")
-def my_ip_locate(request: Request):
-    """根据请求来源IP获取经纬度和地址（服务端视角，不受浏览器代理影响？会受影响）"""
-    client_ip = request.client.host if request.client else ""
-    if not client_ip or client_ip in ("127.0.0.1", "::1", "localhost"):
-        return {"lat": None, "lng": None, "location": "本地环境无法获取IP"}
+def my_ip_locate(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """高德IP定位，返回中文省市区。普通用户每天限1次，管理员无限制。"""
+    # 每日限制检查（管理员跳过）
+    if not user.is_admin and user.last_located_at:
+        elapsed = datetime.utcnow() - user.last_located_at
+        if elapsed < timedelta(hours=24):
+            return {"lat": None, "lng": None, "location": "", "limited": True,
+                    "msg": f"每天只能更新一次定位，请{24 - int(elapsed.total_seconds()//3600)}小时后再试"}
+    key = get_amap_key(db)
+    if not key: return {"lat": None, "lng": None, "location": "未配置高德Key"}
     try:
         import requests
-        r = requests.get(f"https://ipapi.co/{client_ip}/json/", timeout=5)
+        r = requests.get("https://restapi.amap.com/v3/ip", params={"key": key}, timeout=8)
         if r.ok:
             d = r.json()
-            if d.get("latitude") and d.get("longitude"):
-                parts = [p for p in [d.get("region"), d.get("city")] if p]
-                return {"lat": float(d["latitude"]), "lng": float(d["longitude"]),
+            if d.get("status") == "1":
+                adcode = d.get("adcode", "")
+                province = d.get("province", "")
+                city = d.get("city", "")
+                # 用adcode反查区县
+                district = ""
+                if adcode:
+                    try:
+                        r2 = requests.get("https://restapi.amap.com/v3/config/district",
+                                         params={"key": key, "keywords": "" if len(adcode) < 4 else adcode[:4], "subdistrict": 1},
+                                         timeout=5)
+                        if r2.ok:
+                            d2 = r2.json()
+                            districts = d2.get("districts", [])
+                            if districts and districts[0].get("districts"):
+                                district = districts[0]["districts"][0]["name"]
+                    except: pass
+                parts = [p for p in [province, city, district] if p and p]
+                # 尝试从高德逆地理编码获取精确位置
+                rect = d.get("rectangle", "")
+                if rect:
+                    try:
+                        coords = rect.split(";")[0]  # 取左下角
+                        lng, lat = coords.split(",")
+                        r3 = requests.get("https://restapi.amap.com/v3/geocode/regeo",
+                                         params={"key": key, "location": f"{lng},{lat}", "extensions": "base"},
+                                         timeout=5)
+                        if r3.ok and r3.json().get("status") == "1":
+                            comp = r3.json().get("regeocode", {}).get("addressComponent", {})
+                            if comp.get("district"):
+                                parts = [p for p in [comp.get("province", ""), comp.get("city", "") or comp.get("province", ""), comp.get("district", "")] if p]
+                    except: pass
+                location = ", ".join(parts) if parts else ""
+                user.last_located_at = datetime.utcnow(); db.commit()
+                return {"lat": float(lat) if lat else None, "lng": float(lng) if lng else None,
+                        "location": location, "province": province, "city": city}
+    except: pass
+    # 回退到 ip-api
+    try:
+        import requests
+        r = requests.get("http://ip-api.com/json/?fields=status,lat,lon,regionName,city&lang=zh-CN", timeout=8)
+        if r.ok:
+            d = r.json()
+            if d.get("status") == "success":
+                parts = [p for p in [d.get("regionName"), d.get("city")] if p]
+                user.last_located_at = datetime.utcnow(); db.commit()
+                return {"lat": float(d["lat"]), "lng": float(d["lon"]),
                         "location": ", ".join(parts) if parts else ""}
     except: pass
     return {"lat": None, "lng": None, "location": ""}

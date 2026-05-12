@@ -28,6 +28,7 @@ class User(Base):
     warning_count = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False)
     status = Column(String(20), default="active")
+    last_located_at = Column(DateTime)
     # 实名认证
     real_name = Column(String(50))
     id_card = Column(String(18))

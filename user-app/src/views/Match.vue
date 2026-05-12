@@ -7,7 +7,7 @@
 
     <div v-if="!status.isMatching && !status.isMatched" style="text-align:center">
       <div class="glass-card" style="max-width:min(540px,90vw);margin:0 auto">
-        <div style="margin-bottom:12px;text-align:center"><strong>匹配范围</strong><br/><el-radio-group v-model="scope"><el-radio value="city">同区/县</el-radio><el-radio value="province">同省</el-radio></el-radio-group></div>
+        <div style="margin-bottom:12px;text-align:center"><strong>匹配范围</strong><br/><el-radio-group v-model="scope"><el-radio value="city">同城</el-radio><el-radio value="province">同省</el-radio></el-radio-group></div>
         <div style="margin-bottom:12px;text-align:center"><strong>期望性别</strong><br/><el-radio-group v-model="preferGender"><el-radio value="male">男</el-radio><el-radio value="female">女</el-radio></el-radio-group></div>
         <div style="margin-bottom:16px;font-size:clamp(12px,1vw,14px);color:var(--text-secondary);text-align:center">
           <p>📍 当前定位：{{ currentLocation || '未获取' }}</p>
@@ -15,7 +15,7 @@
           <p v-else-if="!savedLat" style="color:var(--danger);margin-top:4px">需要开启GPS定位才能匹配</p>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-          <el-button @click="tryLocate" :loading="locating" style="width:100%">获取GPS定位</el-button>
+          <el-button @click="tryLocate(true)" :loading="locating" style="width:100%">获取GPS定位</el-button>
           <el-button type="primary" size="large" @click="startMatch" :loading="matching" style="width:100%" :disabled="!savedLat">开始匹配</el-button>
         </div>
       </div>
@@ -62,22 +62,36 @@ onMounted(async ()=>{
     const r = await matchStatus(); mapStatus(r.data)
     if (r.data.is_matching) startPolling()
     const me = await getMe()
-    if (me.data.location) currentLocation.value = me.data.location
+    // 显示已保存的位置
+    const cached = sessionStorage.getItem('locate_cache')
+    if (cached) {
+      try {
+        const c = JSON.parse(cached)
+        if (c.lat && c.lng) {
+          savedLat.value = c.lat; savedLng.value = c.lng
+          currentLocation.value = c.location || me.data.location || ''
+        }
+      } catch {}
+    }
+    if (!currentLocation.value && me.data.location) currentLocation.value = me.data.location
+    // 自动定位（12小时频控在tryLocate内）
+    tryLocate()
   } catch {}
-  tryLocate()
 })
 onUnmounted(()=>stopPolling())
 
 // 通过 WebRTC STUN 获取真实 IP（跳过 HTTP 代理）
 async function getRealIP() {
   return new Promise((resolve) => {
+    let done = false
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
     })
     const candidates = []
     const timeout = setTimeout(() => {
+      if (done) return
+      done = true
       pc.close()
-      // 从 candidates 提取真实 IP
       for (const c of candidates) {
         const m = c.match(/(\d+\.\d+\.\d+\.\d+)/)
         if (m) {
@@ -90,15 +104,59 @@ async function getRealIP() {
       resolve(null)
     }, 3000)
     pc.onicecandidate = (e) => {
-      if (e.candidate) candidates.push(e.candidate.candidate)
-      else { clearTimeout(timeout); pc.close(); timeout._called = true; }
+      if (e.candidate) {
+        candidates.push(e.candidate.candidate)
+      } else {
+        if (done) return
+        done = true
+        clearTimeout(timeout)
+        pc.close()
+        for (const c of candidates) {
+          const m = c.match(/(\d+\.\d+\.\d+\.\d+)/)
+          if (m) {
+            const ip = m[1]
+            if (!ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('172.')) {
+              resolve(ip); return
+            }
+          }
+        }
+        resolve(null)
+      }
     }
     pc.createDataChannel('')
-    pc.createOffer().then(o => pc.setLocalDescription(o))
+    pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => { if (!done) { done = true; clearTimeout(timeout); pc.close(); resolve(null) } })
   })
 }
 
-async function tryLocate() {
+async function tryLocate(manual = false) {
+  // 频控检查
+  const now = Date.now()
+  const cached = sessionStorage.getItem('locate_cache')
+  if (cached) {
+    try {
+      const c = JSON.parse(cached)
+      if (manual) {
+        // 手动：每天0点刷新，同一天内不可重复
+        const lastDay = new Date(c.time).toDateString()
+        const today = new Date(now).toDateString()
+        if (lastDay === today && c.lat && c.lng) {
+          ElMessage.warning('今天已更新过定位，请明天再试')
+          locating.value = false
+          return
+        }
+      } else {
+        // 自动：12小时内不重复
+        if (now - c.time < 43200000 && c.lat && c.lng) {
+          savedLat.value = c.lat
+          savedLng.value = c.lng
+          currentLocation.value = c.location
+          locating.value = false
+          return
+        }
+      }
+    } catch {}
+  }
+
   locating.value = true
   currentLocation.value = ''
   let permState = 'unknown'
@@ -126,6 +184,7 @@ async function tryLocate() {
           currentLocation.value = d.location || `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`
         }
         if (currentLocation.value) await updateProfile({ location: currentLocation.value })
+        sessionStorage.setItem('locate_cache', JSON.stringify({ lat: savedLat.value, lng: savedLng.value, location: currentLocation.value, time: Date.now() }))
         ElMessage.success('已通过GPS获取位置')
         locating.value = false
         return
@@ -144,8 +203,16 @@ async function tryLocate() {
         if (d.lat && d.lng) {
           savedLat.value = d.lat
           savedLng.value = d.lng
-          currentLocation.value = d.location || `${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}`
+          // 用 Nominatim 反查中文地址
+          try {
+            const gr = await fetch(`/api/geocode/reverse?lat=${d.lat}&lng=${d.lng}`)
+            if (gr.ok) {
+              const gd = await gr.json()
+              currentLocation.value = gd.location || d.location || `${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}`
+            }
+          } catch { currentLocation.value = d.location || `${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}` }
           await updateProfile({ location: currentLocation.value })
+          sessionStorage.setItem('locate_cache', JSON.stringify({ lat: savedLat.value, lng: savedLng.value, location: currentLocation.value, time: Date.now() }))
           ElMessage.success('已通过真实IP获取大致位置')
           locating.value = false
           return
@@ -154,16 +221,24 @@ async function tryLocate() {
     }
   } catch {}
 
-  // --- 第3步：服务端IP定位（最后的回退）---
+  // --- 第3步：服务端代理获取公网IP位置（已含中文地址）---
+  currentLocation.value = '正在通过网络获取位置...'
   try {
-    const r = await fetch('/api/geocode/my-ip')
+    const r = await fetch('/api/geocode/my-ip?' + Date.now())  // 防缓存
     if (r.ok) {
       const d = await r.json()
+      if (d.limited) {
+        ElMessage.warning(d.msg || '每天只能更新一次定位')
+        currentLocation.value = '已限频'
+        locating.value = false
+        return
+      }
       if (d.lat && d.lng) {
         savedLat.value = d.lat
         savedLng.value = d.lng
         currentLocation.value = d.location || `${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}`
         await updateProfile({ location: currentLocation.value })
+        sessionStorage.setItem('locate_cache', JSON.stringify({ lat: savedLat.value, lng: savedLng.value, location: currentLocation.value, time: Date.now() }))
         ElMessage.success('已通过网络获取大致位置')
         locating.value = false
         return
@@ -173,7 +248,7 @@ async function tryLocate() {
 
   // 全部失败
   savedLat.value = null; savedLng.value = null; currentLocation.value = '获取失败'
-  ElMessage.error('无法获取位置。请检查：① 设备GPS/Wi-Fi是否开启 ② Windows定位服务是否开启')
+  ElMessage.error('无法获取位置。请检查：① 网络是否正常 ② 是否开启了全局代理 ③ GPS/Wi-Fi是否可用')
   locating.value = false
 }
 

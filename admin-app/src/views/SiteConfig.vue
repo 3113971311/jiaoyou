@@ -47,6 +47,7 @@ const LABELS = {
   alipay_app_id:      { label: '支付宝应用 APPID',     desc: '支付宝开放平台应用ID', group: '支付配置' },
   alipay_private_key: { label: '支付宝应用私钥',       desc: 'RSA2，需自己生成密钥对(PKCS8格式)', group: '支付配置', type: 'textarea' },
   alipay_public_key:  { label: '支付宝公钥',           desc: '从支付宝开发者后台下载(非应用公钥)', group: '支付配置', type: 'textarea' },
+  amap_key:           { label: '高德地图 Key',          desc: '高德开放平台Web服务Key，用于IP定位', group: '支付配置' },
   site_name:          { label: '网站名称',          desc: '显示在页面标题和导航栏', group: '基础设置' },
   site_subtitle:      { label: '网站副标题',        desc: '显示在首页标题下方', group: '基础设置' },
   announcement_enabled: { label: '启用公告',        desc: '是否显示全站顶部公告', group: '前端展示' },
