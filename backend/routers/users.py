@@ -17,6 +17,9 @@ def get_user(user_id: str, user: User = Depends(get_current_user), db: Session =
     return {"id": u.id, "username": u.username, "nickname": u.nickname, "avatar_url": u.avatar_url,
             "gender": u.gender, "bio": u.bio, "location": u.location,
             "vip_expires_at": u.vip_expires_at.isoformat() if u.vip_expires_at else None,
+            "is_verified": u.is_verified, "verify_status": u.verify_status,
+            "real_name": u.real_name, "id_card": u.id_card, "id_photo": u.id_photo,
+            "is_admin": u.is_admin, "email": u.email, "warning_count": u.warning_count,
             "created_at": u.created_at.isoformat(), "status": u.status}
 
 @router.put("/users/profile")
@@ -53,7 +56,9 @@ def admin_list_users(search: str = "", status: str = "", page: int = 1, limit: i
     items = q.order_by(User.created_at.desc()).offset((page-1)*limit).limit(limit).all()
     return {"items": [{"id": u.id, "username": u.username, "email": u.email, "nickname": u.nickname,
             "gender": u.gender, "location": u.location, "vip_expires_at": u.vip_expires_at.isoformat() if u.vip_expires_at else None,
-            "is_admin": u.is_admin, "status": u.status, "warning_count": u.warning_count, "created_at": u.created_at.isoformat()} for u in items], "total": total}
+            "is_admin": u.is_admin, "status": u.status, "warning_count": u.warning_count,
+            "is_verified": u.is_verified, "verify_status": u.verify_status, "real_name": u.real_name,
+            "created_at": u.created_at.isoformat()} for u in items], "total": total}
 
 @router.post("/admin/users")
 def admin_create_user(req: CreateUserRequest, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):

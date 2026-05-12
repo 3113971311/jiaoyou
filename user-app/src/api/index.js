@@ -40,8 +40,12 @@ export const getFeed = (params) => api.get('/moments', { params })
 export const getMoment = (id) => api.get(`/moments/${id}`)
 export const deleteMoment = (id) => api.delete(`/moments/${id}`)
 export const toggleLike = (id) => api.post(`/moments/${id}/like`)
+export const toggleFavorite = (id) => api.post(`/moments/${id}/favorite`)
+export const myLikes = (params) => api.get('/users/me/likes', { params })
+export const myFavorites = (params) => api.get('/users/me/favorites', { params })
 export const addComment = (id, data) => api.post(`/moments/${id}/comments`, data)
 export const getComments = (id) => api.get(`/moments/${id}/comments`)
+export const deleteComment = (momentId, commentId) => api.delete(`/moments/${momentId}/comments/${commentId}`)
 
 // Match
 export const startMatch = (data) => api.post('/match/start', data)
@@ -61,7 +65,6 @@ export const vipStatus = () => api.get('/vip/status')
 export const vipHistory = () => api.get('/vip/history')
 export const createPaymentOrder = (params) => api.post('/payment/orders', null, { params })
 export const alipayPay = (data) => api.post('/payment/alipay/pay', data)
-export const wechatPay = (data) => api.post('/payment/wechat/pay', data)
 export const devPay = (data) => api.post('/payment/dev-pay', data)
 export const getPaymentOrder = (id) => api.get(`/payment/orders/${id}`)
 
@@ -81,6 +84,10 @@ export const getSiteConfig = (keys) => api.get('/site-config', { params: { keys 
 
 // Feedback
 export const submitFeedback = (data) => api.post('/feedback', data)
+
+// Verify
+export const submitVerify = (data) => api.post('/verify/submit', data)
+export const getVerifyStatus = () => api.get('/verify/status')
 
 // Admin
 export const adminDashboard = () => api.get('/admin/dashboard')
@@ -108,3 +115,13 @@ export const adminHandleReport = (id, data) => api.post(`/admin/reports/${id}/ha
 export const adminSensitiveWords = () => api.get('/admin/sensitive-words')
 export const adminSiteConfigs = () => api.get('/admin/site-configs')
 export const adminUpdateConfig = (key, data) => api.put(`/admin/site-configs/${key}`, data)
+
+// 图片 URL 辅助函数（staging 图片通过 token 鉴权访问）
+export const userImageUrl = (p) => {
+  if (!p) return ''
+  // 公开图片直接返回
+  if (p.startsWith('/public/')) return p
+  // staging 或其他受保护图片通过 /api/image 访问
+  const t = localStorage.getItem('user_token') || ''
+  return `/api/image?path=${encodeURIComponent(p)}&token=${t}`
+}

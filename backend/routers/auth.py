@@ -104,7 +104,9 @@ def get_me(user: User = Depends(get_current_user)):
     return {"id": user.id, "username": user.username, "email": user.email, "nickname": user.nickname,
             "avatar_url": user.avatar_url, "gender": user.gender, "bio": user.bio, "location": user.location,
             "vip_expires_at": user.vip_expires_at.isoformat() if user.vip_expires_at else None,
-            "is_admin": user.is_admin, "status": user.status, "created_at": user.created_at.isoformat()}
+            "is_admin": user.is_admin, "status": user.status,
+            "is_verified": user.is_verified, "verify_status": user.verify_status,
+            "warning_count": user.warning_count, "created_at": user.created_at.isoformat()}
 
 @router.post("/auth/reset-password")
 def reset_password(req: ResetPwdRequest, db: Session = Depends(get_db)):

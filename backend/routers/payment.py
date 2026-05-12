@@ -140,44 +140,6 @@ async def alipay_notify(request=None, db: Session = Depends(get_db)):
     except Exception:
         return "fail"
 
-# ─── WeChat Native Payment ───
-@router.post("/payment/wechat/pay")
-def wechat_pay(order_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    order = db.query(PaymentOrder).filter(PaymentOrder.id == order_id, PaymentOrder.user_id == user.id).first()
-    if not order: raise HTTPException(404, "订单不存在")
-    if order.status != "pending": raise HTTPException(400, "订单已处理")
-
-    cfgs = get_payment_config(db)
-    app_id = cfgs.get("wechat_app_id", "")
-    mch_id = cfgs.get("wechat_mch_id", "")
-    api_v3_key = cfgs.get("wechat_api_v3_key", "")
-
-    if not all([app_id, mch_id, api_v3_key]):
-        raise HTTPException(400, "微信支付未配置，请联系管理员")
-
-    try:
-        # WeChat Pay APIv3 Native payment
-        import requests as http_requests
-        import json as _json
-
-        url = "https://api.mch.weixin.qq.com/v3/pay/transactions/native"
-        req_data = {
-            "appid": app_id,
-            "mchid": mch_id,
-            "description": f"VIP会员 {order.plan_days}天",
-            "out_trade_no": order.id,
-            "notify_url": "",
-            "amount": {"total": int(order.amount * 100), "currency": "CNY"},
-        }
-
-        # Simplified: real implementation needs WeChat Pay SDK for signing
-        # For now, return config-needed message
-        raise HTTPException(400, "微信支付SDK配置中，请使用支付宝支付")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(500, f"生成微信支付失败: {str(e)}")
-
 # ─── Dev/Test Payment (for when credentials not configured) ───
 @router.post("/payment/dev-pay")
 def dev_pay(order_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):

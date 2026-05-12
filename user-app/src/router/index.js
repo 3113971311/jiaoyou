@@ -6,6 +6,7 @@ const routes = [
   { path: '/login', component: () => import('../views/Login.vue'), meta: { guest: true } },
   { path: '/', component: () => import('../views/Home.vue'), meta: { requiresAuth: true } },
   { path: '/moments', component: () => import('../views/Moments.vue'), meta: { requiresAuth: true } },
+  { path: '/moment/:id', component: () => import('../views/MomentDetail.vue'), meta: { requiresAuth: true } },
   { path: '/match', component: () => import('../views/Match.vue'), meta: { requiresAuth: true } },
   { path: '/chat', component: () => import('../views/Chats.vue'), meta: { requiresAuth: true } },
   { path: '/chat/:id', component: () => import('../views/ChatDetail.vue'), meta: { requiresAuth: true } },
@@ -16,6 +17,7 @@ const routes = [
   { path: '/settings', component: () => import('../views/Settings.vue'), meta: { requiresAuth: true } },
   { path: '/buy-card', component: () => import('../views/BuyCard.vue'), meta: { requiresAuth: true } },
   { path: '/feedback', component: () => import('../views/Feedback.vue'), meta: { requiresAuth: true } },
+  { path: '/verify', component: () => import('../views/Verify.vue'), meta: { requiresAuth: true } },
   { path: '/following', component: () => import('../views/Following.vue'), meta: { requiresAuth: true } },
   { path: '/followers', component: () => import('../views/Followers.vue'), meta: { requiresAuth: true } },
 ]

@@ -24,6 +24,7 @@
         </div>
         <div class="batch-actions-top">
           <el-button size="small" @click.stop="doExport(b)">导出</el-button>
+          <el-button size="small" type="danger" @click.stop="delBatch(b)">删除</el-button>
           <el-icon :size="18" style="transition:transform 0.3s" :style="{ transform: b._open ? 'rotate(180deg)' : '' }"><ArrowDown /></el-icon>
         </div>
       </div>
@@ -91,9 +92,9 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { adminListBatches, adminBatchDetail, adminGenerateCards, adminDeleteCard, adminExportBatch } from '../api'
+import { adminListBatches, adminBatchDetail, adminGenerateCards, adminDeleteCard, adminExportBatch, adminDeleteBatch } from '../api'
 
 const batches = ref([])
 const showGen = ref(false)
@@ -144,6 +145,14 @@ async function delCode(batch, row) {
 }
 async function doExport(row) {
   try { const r = await adminExportBatch(row.id); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.data])); a.download = row.batch_name+'.csv'; a.click(); ElMessage.success('导出成功') } catch {}
+}
+async function delBatch(batch) {
+  try {
+    await ElMessageBox.confirm(`确认删除批次「${batch.batch_name}」及其所有卡密？此操作不可恢复。`, '删除批次', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'danger' })
+    await adminDeleteBatch(batch.id)
+    ElMessage.success('批次已删除')
+    loadBatches()
+  } catch { /* cancelled */ }
 }
 </script>
 

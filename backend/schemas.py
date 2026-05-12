@@ -15,6 +15,7 @@ class RefreshRequest(BaseModel): refresh_token: str
 class UpdateProfileRequest(BaseModel):
     nickname: Optional[str] = None; gender: Optional[str] = None
     birthday: Optional[str] = None; bio: Optional[str] = None
+    location: Optional[str] = None
 
 # ---- Moments ----
 class CreateMomentRequest(BaseModel): content_text: Optional[str] = ""

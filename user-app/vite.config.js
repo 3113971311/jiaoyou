@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5173,
-    proxy: { '/api': 'http://localhost:3001', '/public': 'http://localhost:3001' }
+    proxy: { '/api': 'http://localhost:3002', '/public': 'http://localhost:3002' }
   },
   optimizeDeps: {
     include: ['vue', 'vue-router', 'pinia', 'element-plus', 'axios', '@element-plus/icons-vue'],

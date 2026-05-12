@@ -47,6 +47,15 @@ def delete_card(card_id: str, admin: User = Depends(get_admin_user), db: Session
     db.commit()
     return {"message": "已删除"}
 
+@router.delete("/admin/cards/batches/{batch_id}")
+def delete_batch(batch_id: str, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    batch = db.query(CardBatch).filter(CardBatch.id == batch_id).first()
+    if not batch: raise HTTPException(404)
+    db.query(Card).filter(Card.batch_id == batch_id).delete()
+    db.delete(batch)
+    db.commit()
+    return {"message": "批次已删除"}
+
 @router.get("/admin/cards/batches/{batch_id}/export")
 def export_batch(batch_id: str, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
     batch = db.query(CardBatch).filter(CardBatch.id == batch_id).first()

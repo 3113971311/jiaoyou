@@ -4,7 +4,8 @@
       <div class="aside-title">管理后台</div>
       <el-menu :default-active="$route.path" router>
         <el-menu-item index="/"><el-icon><DataAnalysis /></el-icon><span>仪表盘</span></el-menu-item>
-        <el-menu-item index="/review"><el-icon><PictureFilled /></el-icon><span>图片审核</span></el-menu-item>
+        <el-menu-item index="/review"><el-icon><PictureFilled /></el-icon><span>审核</span></el-menu-item>
+        <el-menu-item index="/moments"><el-icon><Edit /></el-icon><span>动态管理</span></el-menu-item>
         <el-menu-item index="/cards"><el-icon><Goods /></el-icon><span>发卡管理</span></el-menu-item>
         <el-menu-item index="/users"><el-icon><UserFilled /></el-icon><span>用户管理</span></el-menu-item>
         <el-menu-item index="/chats"><el-icon><ChatDotSquare /></el-icon><span>聊天监控</span></el-menu-item>

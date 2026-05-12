@@ -1,6 +1,9 @@
 <template>
-  <div class="page-container rw-md mx-auto">
-    <h2 style="margin-bottom:16px">问题反馈</h2>
+  <div class="page-container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <el-button @click="$router.push('/')" circle><el-icon><Back /></el-icon></el-button>
+      <h2 style="margin:0">问题反馈</h2>
+    </div>
     <div class="glass-card">
       <el-input v-model="form.title" placeholder="标题" style="margin-bottom:12px" />
       <el-input v-model="form.content" type="textarea" :rows="5" placeholder="详细描述你的问题" style="margin-bottom:12px" />
@@ -13,6 +16,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Back } from '@element-plus/icons-vue'
 import { submitFeedback } from '../api'
 const form = reactive({ title:'',content:'',contact:'' })
 const sending = ref(false)

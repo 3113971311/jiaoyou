@@ -28,6 +28,12 @@ class User(Base):
     warning_count = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False)
     status = Column(String(20), default="active")
+    # 实名认证
+    real_name = Column(String(50))
+    id_card = Column(String(18))
+    id_photo = Column(String(500))
+    is_verified = Column(Boolean, default=False)
+    verify_status = Column(String(20), default="")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
@@ -103,6 +109,7 @@ class Moment(Base):
     images = relationship("MomentImage", back_populates="moment", cascade="all, delete")
     likes = relationship("MomentLike", back_populates="moment", cascade="all, delete")
     comments = relationship("MomentComment", back_populates="moment", cascade="all, delete")
+    favorites = relationship("MomentFavorite", back_populates="moment", cascade="all, delete")
 
 
 class MomentImage(Base):
@@ -139,6 +146,17 @@ class MomentComment(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     moment = relationship("Moment", back_populates="comments")
+
+
+class MomentFavorite(Base):
+    __tablename__ = "moment_favorites"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    moment_id = Column(String, ForeignKey("moments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    moment = relationship("Moment", back_populates="favorites")
+    __table_args__ = (UniqueConstraint("moment_id", "user_id"),)
 
 
 class ReviewQueue(Base):

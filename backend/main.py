@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from models import init_db
-from routers import auth, users, follow, moments, moderation, match, chat, payment, cards, reports, notifications, feedback, site_config, dashboard
+from routers import auth, users, follow, moments, moderation, match, chat, payment, cards, reports, notifications, feedback, site_config, dashboard, verify
 
 app = FastAPI(title="拾光")
 
@@ -29,6 +29,7 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(site_config.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(verify.router, prefix="/api")
 
 @app.get("/api/health")
 def health():

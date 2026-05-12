@@ -26,6 +26,13 @@
       </el-table-column>
       <el-table-column prop="email" label="邮箱" min-width="140" />
       <el-table-column prop="nickname" label="昵称" min-width="80" />
+      <el-table-column label="实名" min-width="70">
+        <template #default="{row}">
+          <el-tag v-if="row.is_verified" type="success" size="small">已认证</el-tag>
+          <el-tag v-else-if="row.verify_status==='pending'" type="warning" size="small">审核中</el-tag>
+          <span v-else style="color:var(--text-tertiary);font-size:12px">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="位置" min-width="80">
         <template #default="{row}">{{ row.location || '-' }}</template>
       </el-table-column>
@@ -97,19 +104,43 @@
     </el-dialog>
 
     <!-- Detail dialog -->
-    <el-dialog v-model="showDetailDlg" title="用户详情" style="width:min(95vw,640px)">
+    <el-dialog v-model="showDetailDlg" title="用户详情" style="width:min(95vw,680px)">
       <template v-if="detailUser">
+        <!-- 头像 + 实名照片 -->
+        <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
+          <div style="text-align:center">
+            <el-avatar :src="detailUser.avatar_url||''" :size="72" />
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">头像</div>
+          </div>
+          <template v-if="detailUser.id_photo">
+            <div style="text-align:center">
+              <el-image :src="verifyPhotoUrl(detailUser.id_photo)" style="width:72px;height:72px;border-radius:8px" fit="cover" :preview-src-list="[verifyPhotoUrl(detailUser.id_photo)]" />
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">实名照片</div>
+            </div>
+          </template>
+        </div>
         <el-descriptions :column="2" border>
+          <el-descriptions-item label="用户ID" :span="2">{{ detailUser.id }}</el-descriptions-item>
           <el-descriptions-item label="用户名">{{ detailUser.username }}</el-descriptions-item>
           <el-descriptions-item label="昵称">{{ detailUser.nickname||'-' }}</el-descriptions-item>
           <el-descriptions-item label="邮箱">{{ detailUser.email }}</el-descriptions-item>
           <el-descriptions-item label="性别">{{ detailUser.gender==='male'?'男':detailUser.gender==='female'?'女':'-' }}</el-descriptions-item>
           <el-descriptions-item label="所在地">{{ detailUser.location||'未定位' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">{{ detailUser.status }}</el-descriptions-item>
+          <el-descriptions-item label="个人简介">{{ detailUser.bio||'-' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="detailUser.status==='active'?'success':detailUser.status==='banned'?'danger':'info'" size="small">{{ detailUser.status }}</el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="VIP到期">{{ detailUser.vip_expires_at?new Date(detailUser.vip_expires_at).toLocaleString():'无' }}</el-descriptions-item>
-          <el-descriptions-item label="警告次数">{{ detailUser.warning_count }}</el-descriptions-item>
           <el-descriptions-item label="角色">{{ detailUser.is_admin?'站长':'普通用户' }}</el-descriptions-item>
+          <el-descriptions-item label="警告次数">{{ detailUser.warning_count }}</el-descriptions-item>
           <el-descriptions-item label="注册时间">{{ new Date(detailUser.created_at).toLocaleString() }}</el-descriptions-item>
+          <el-descriptions-item label="实名状态">
+            <el-tag v-if="detailUser.is_verified" type="success" size="small">已认证</el-tag>
+            <el-tag v-else-if="detailUser.verify_status==='pending'" type="warning" size="small">审核中</el-tag>
+            <span v-else>未认证</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="真实姓名">{{ detailUser.real_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="身份证号" :span="2">{{ detailUser.id_card || '-' }}</el-descriptions-item>
         </el-descriptions>
       </template>
     </el-dialog>
@@ -183,6 +214,11 @@ async function setStatus(row, status) {
     row.status = status
     ElMessage.success(`已${labels[status] || status}`)
   } catch {}
+}
+function verifyPhotoUrl(p) {
+  if (!p) return ''
+  const t = localStorage.getItem('admin_token') || ''
+  return `/api/verify/photo?path=${encodeURIComponent(p)}&token=${t}`
 }
 async function showDetail(row) { try { const r = await getUser(row.id); detailUser.value = r.data; showDetailDlg.value = true } catch {} }
 function action(cmd, row) {

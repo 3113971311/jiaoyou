@@ -24,6 +24,43 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 图片预览绝对置顶 */
+.el-image-viewer__wrapper {
+  z-index: 9999999 !important;
+  position: fixed !important;
+}
+.el-image-viewer__mask {
+  z-index: 9999998 !important;
+  position: fixed !important;
+}
+.el-image-viewer__canvas {
+  z-index: 9999999 !important;
+}
+.el-image-viewer__close {
+  z-index: 10000001 !important;
+  color: #fff !important;
+  font-size: 32px !important;
+}
+.el-image-viewer__btn {
+  z-index: 10000001 !important;
+}
+/* 表格降级 */
+.el-table,
+.el-table__inner-wrapper,
+.el-table__body-wrapper,
+.el-table__fixed,
+.el-table__fixed-right,
+.el-table__header-wrapper {
+  z-index: auto !important;
+  position: static !important;
+  transform: none !important;
+}
+.el-table td,
+.el-table th {
+  position: static !important;
+}
+
 html, body {
   font-family: var(--font);
   background: var(--bg);
