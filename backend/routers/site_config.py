@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import SiteConfig, User
@@ -7,19 +7,34 @@ from auth import get_admin_user
 
 router = APIRouter(tags=["site_config"])
 
+PAYMENT_CONFIG_PREFIXES = ("alipay_", "wechat_")
+
+def is_payment_config_key(key: str) -> bool:
+    return key.startswith(PAYMENT_CONFIG_PREFIXES)
+
 @router.get("/site-config")
 def get_configs(keys: str = "", db: Session = Depends(get_db)):
     q = db.query(SiteConfig)
-    if keys: q = q.filter(SiteConfig.config_key.in_(keys.split(",")))
+    if keys:
+        allowed_keys = [key for key in keys.split(",") if not is_payment_config_key(key)]
+        q = q.filter(SiteConfig.config_key.in_(allowed_keys))
+    else:
+        for prefix in PAYMENT_CONFIG_PREFIXES:
+            q = q.filter(~SiteConfig.config_key.startswith(prefix))
     result = {c.config_key: {"value": c.config_value, "type": c.value_type} for c in q.all()}
     return result
 
 @router.get("/admin/site-configs")
 def admin_list_configs(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    return db.query(SiteConfig).all()
+    q = db.query(SiteConfig)
+    for prefix in PAYMENT_CONFIG_PREFIXES:
+        q = q.filter(~SiteConfig.config_key.startswith(prefix))
+    return q.all()
 
 @router.put("/admin/site-configs/{key}")
 def admin_update_config(key: str, req: UpdateConfigRequest, admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    if is_payment_config_key(key):
+        raise HTTPException(400, "支付配置已移除")
     cfg = db.query(SiteConfig).filter(SiteConfig.config_key == key).first()
     if cfg:
         cfg.config_value = req.value

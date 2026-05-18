@@ -7,6 +7,8 @@ const routes = [
       { path: '', component: () => import('../views/Dashboard.vue') },
       { path: 'review', component: () => import('../views/ReviewQueue.vue') },
       { path: 'moments', component: () => import('../views/Moments.vue') },
+      { path: 'vip-plans', component: () => import('../views/VipPlans.vue') },
+      { path: 'alipay-bills', component: () => import('../views/AlipayBills.vue') },
       { path: 'cards', component: () => import('../views/CardBatches.vue') },
       { path: 'users', component: () => import('../views/Users.vue') },
       { path: 'chats', component: () => import('../views/ChatMonitor.vue') },
@@ -18,10 +20,22 @@ const routes = [
 const router = createRouter({ history: createWebHashHistory(), routes })
 router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('admin_token')
-  if (to.meta.requiresAuth && !token) return next('/login')
-  if (to.meta.guest && token) return next('/')
   const auth = useAuthStore()
-  if (token && !auth.user) { try { await auth.fetchMe() } catch { return next('/login') } }
+
+  if (!token) {
+    if (to.meta.requiresAuth) return next('/login')
+    return next()
+  }
+
+  if (!auth.user) await auth.fetchMe()
+
+  if (to.meta.guest) {
+    if (auth.isAdmin) return next('/')
+    localStorage.clear()
+    return next()
+  }
+
+  if (to.meta.requiresAuth && !auth.user) return next('/login')
   if (to.meta.requiresAdmin && !auth.isAdmin) { auth.logout(); return }
   next()
 })

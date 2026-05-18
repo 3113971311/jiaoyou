@@ -5,8 +5,8 @@
       <span style="font-weight:600;margin-left:8px">聊天</span>
     </div>
     <div ref="msgBox" style="flex:1;overflow-y:auto;padding:clamp(8px,1.5vw,16px)">
-      <div v-for="m in messages" :key="m.id" :style="{display:'flex',justifyContent:m.sender_id===userId?'flex-end':'flex-start',marginBottom:clamp(6px,1vw,12px)}">
-        <div :style="{maxWidth:'clamp(60%,70%,75%)',padding:clamp(8px,1vw,14px),borderRadius:'12px',fontSize:clamp(13px,1.2vw,15px),lineHeight:'1.5',background:m.sender_id===userId?'var(--accent)':'var(--card-bg)',color:m.sender_id===userId?'#fff':'var(--text)'}">
+      <div v-for="m in messages" :key="m.id" :style="{display:'flex',justifyContent:m.sender_id===userId?'flex-end':'flex-start',marginBottom:'clamp(6px,1vw,12px)'}">
+        <div :style="{maxWidth:'clamp(60%,70%,75%)',padding:'clamp(8px,1vw,14px)',borderRadius:'12px',fontSize:'clamp(13px,1.2vw,15px)',lineHeight:'1.5',background:m.sender_id===userId?'var(--accent)':'var(--card-bg)',color:m.sender_id===userId?'#fff':'var(--text)'}">
           <div v-if="m.content_type=='text'">{{ m.content }}</div>
           <el-image v-else-if="m.image_url" :src="userImageUrl(m.image_url)" style="max-width:min(300px,55vw);border-radius:8px" fit="contain" :preview-src-list="[userImageUrl(m.image_url)]" />
         </div>

@@ -40,23 +40,20 @@ import { ElMessage } from 'element-plus'
 import { adminSiteConfigs, adminUpdateConfig } from '../api'
 
 const LABELS = {
-  smtp_host:   { label: 'SMTP 服务器',    desc: '邮件发送服务器地址', group: '邮件服务' },
-  smtp_port:   { label: 'SMTP 端口',      desc: '465(SSL) / 587(STARTTLS)', group: '邮件服务' },
-  smtp_user:   { label: '发件邮箱',       desc: '用于发送验证码和通知', group: '邮件服务' },
-  smtp_pass:   { label: '邮箱授权码',     desc: 'QQ邮箱→设置→账户→POP3/SMTP', group: '邮件服务', type: 'password' },
-  alipay_app_id:      { label: '支付宝应用 APPID',     desc: '支付宝开放平台应用ID', group: '支付配置' },
-  alipay_private_key: { label: '支付宝应用私钥',       desc: 'RSA2，需自己生成密钥对(PKCS8格式)', group: '支付配置', type: 'textarea' },
-  alipay_public_key:  { label: '支付宝公钥',           desc: '从支付宝开发者后台下载(非应用公钥)', group: '支付配置', type: 'textarea' },
-  amap_key:           { label: '高德地图 Key',          desc: '高德开放平台Web服务Key，用于IP定位', group: '支付配置' },
-  site_name:          { label: '网站名称',          desc: '显示在页面标题和导航栏', group: '基础设置' },
-  site_subtitle:      { label: '网站副标题',        desc: '显示在首页标题下方', group: '基础设置' },
-  announcement_enabled: { label: '启用公告',        desc: '是否显示全站顶部公告', group: '前端展示' },
-  announcement_text:  { label: '系统公告内容',      desc: '全站顶部公告栏文字', group: '前端展示', type: 'textarea' },
-  home_banners:       { label: '首页轮播图',        desc: 'JSON数组：[{"url":"...","link":"..."}]', group: '前端展示', type: 'textarea' },
-  home_notice:        { label: '首页文字公告',      desc: '显示在首页动态上方的文字', group: '前端展示', type: 'textarea' },
+  smtp_host:   { label: 'SMTP 服务',       desc: '邮件发送服务器地址', group: '邮件服务' },
+  smtp_port:   { label: 'SMTP 端口',       desc: '465(SSL) / 587(STARTTLS)', group: '邮件服务' },
+  smtp_user:   { label: '发件邮箱',        desc: '用于发送验证码和通知', group: '邮件服务' },
+  smtp_pass:   { label: '邮箱授权码',      desc: 'QQ邮箱 -> 设置 -> 账户 -> POP3/SMTP', group: '邮件服务', type: 'password' },
+  amap_key:    { label: '高德地图 Key',    desc: '高德开放平台 Web 服务 Key，用于 IP 定位', group: '定位服务' },
+  site_name:   { label: '网站名称',        desc: '显示在页面标题和导航栏', group: '基础设置' },
+  site_subtitle: { label: '网站副标题',    desc: '显示在首页标题下方', group: '基础设置' },
+  announcement_enabled: { label: '启用公告', desc: '是否显示全站顶部公告', group: '前端展示' },
+  announcement_text: { label: '系统公告内容', desc: '全站顶部公告栏文字', group: '前端展示', type: 'textarea' },
+  home_banners: { label: '首页轮播图',     desc: 'JSON 数组，如 [{"url":"...","link":"..."}]', group: '前端展示', type: 'textarea' },
+  home_notice: { label: '首页文字公告',    desc: '显示在首页动态上方的文字', group: '前端展示', type: 'textarea' },
 }
 
-const GROUPS = ['基础设置', '前端展示', '邮件服务', '支付配置']
+const GROUPS = ['基础设置', '前端展示', '邮件服务', '定位服务']
 const configs = ref([])
 const showEdit = ref(false)
 const editingKey = ref('')
@@ -80,7 +77,7 @@ const groups = computed(() => {
         label: meta.label,
         desc: meta.desc,
         value: db?.config_value || '',
-        display: isSecret ? (db?.config_value ? '••••••••' : '') : ((db?.config_value || '').slice(0, 60) || ''),
+        display: isSecret ? (db?.config_value ? '********' : '') : ((db?.config_value || '').slice(0, 60) || ''),
         type: meta.type || db?.value_type || 'text',
         raw: db?.config_value || '',
       })

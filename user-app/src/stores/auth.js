@@ -23,7 +23,12 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {}
   }
 
-  function logout() { localStorage.clear(); user.value = null; window.location.href = '/login' }
+  function logout() {
+    localStorage.removeItem('user_token')
+    localStorage.removeItem('user_refresh_token')
+    user.value = null
+    window.location.href = '/login'
+  }
 
   return { user, unreadCount, latestNotif, isLoggedIn, isAdmin, isVip, fetchMe, pollUnread, logout }
 })

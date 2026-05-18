@@ -1,7 +1,69 @@
 import axios from 'axios'
 const api = axios.create({ baseURL: '/api', timeout: 15000 })
-api.interceptors.request.use(c => { const t = localStorage.getItem('admin_token'); if(t) c.headers.Authorization=`Bearer ${t}`; return c })
-api.interceptors.response.use(r => r, e => { if(e.response?.status===401){ localStorage.clear(); window.location.href='/login' } return Promise.reject(e) })
+const refreshClient = axios.create({ baseURL: '/api', timeout: 15000 })
+
+let refreshPromise = null
+
+function clearAdminAuth() {
+  localStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_refresh_token')
+}
+
+function shouldSkipRefresh(url = '') {
+  return ['/auth/login', '/auth/refresh'].some((path) => url.includes(path))
+}
+
+async function refreshAdminToken() {
+  if (!refreshPromise) {
+    const refreshToken = localStorage.getItem('admin_refresh_token')
+    if (!refreshToken) throw new Error('missing admin refresh token')
+    refreshPromise = refreshClient.post('/auth/refresh', { refresh_token: refreshToken })
+      .then((res) => {
+        localStorage.setItem('admin_token', res.data.access_token)
+        localStorage.setItem('admin_refresh_token', res.data.refresh_token)
+        return res.data.access_token
+      })
+      .catch((error) => {
+        clearAdminAuth()
+        throw error
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config || {}
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !shouldSkipRefresh(originalRequest.url)
+    ) {
+      originalRequest._retry = true
+      try {
+        const token = await refreshAdminToken()
+        originalRequest.headers = originalRequest.headers || {}
+        originalRequest.headers.Authorization = `Bearer ${token}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        clearAdminAuth()
+        window.location.href = '/#/login'
+        return Promise.reject(refreshError)
+      }
+    }
+    return Promise.reject(error)
+  },
+)
 export default api
 export const login = (d) => api.post('/auth/login', d)
 export const getMe = () => api.get('/auth/me')
@@ -32,6 +94,23 @@ export const adminReports = (p) => api.get('/admin/reports', { params: p })
 export const adminHandleReport = (id, d) => api.post(`/admin/reports/${id}/handle`, d)
 export const adminSiteConfigs = () => api.get('/admin/site-configs')
 export const adminUpdateConfig = (key, d) => api.put(`/admin/site-configs/${key}`, d)
+export const adminVipPlans = () => api.get('/admin/vip-plans')
+export const adminCreateVipPlan = (d) => api.post('/admin/vip-plans', d)
+export const adminUpdateVipPlan = (id, d) => api.put(`/admin/vip-plans/${id}`, d)
+export const adminDeleteVipPlan = (id) => api.delete(`/admin/vip-plans/${id}`)
+export const adminUploadVipPlanQr = (file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post('/admin/vip-plans/upload-qr', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 30000,
+  })
+}
+export const adminAlipayLogin = () => api.post('/admin/alipay/login')
+export const adminSyncAlipayBills = () => api.post('/admin/alipay/bills/sync', null, { timeout: 70000 })
+export const adminAlipayBills = (p) => api.get('/admin/alipay/bills', { params: p })
+export const adminAlipayBillDetail = (id) => api.get(`/admin/alipay/bills/${id}`)
+export const adminBatchAlipayBillStatus = (d) => api.post('/admin/alipay/bills/batch-status', d)
 export const adminListMoments = (p) => api.get('/admin/moments', { params: p })
 export const adminGetMoment = (id) => api.get(`/admin/moments/${id}`)
 export const adminUpdateMoment = (id, d) => api.put(`/admin/moments/${id}`, d)

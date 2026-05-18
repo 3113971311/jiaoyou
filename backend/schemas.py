@@ -27,6 +27,21 @@ class StartMatchRequest(BaseModel):
 # ---- Payment ----
 class RedeemCardRequest(BaseModel): code: str
 class BuyCardRequest(BaseModel): days: int; email: str
+class SubmitOrderNoRequest(BaseModel): order_no: str
+class BatchBillStatusRequest(BaseModel):
+    ids: list[str]
+    status: str
+class VipPlanRequest(BaseModel):
+    days: int
+    price: float
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    badge: Optional[str] = ""
+    payment_qr_url: Optional[str] = ""
+    first_discount_rate: float = 0
+    first_discount_qr_url: Optional[str] = ""
+    sort_order: int = 0
+    is_active: bool = True
 
 # ---- Card ----
 class GenerateCardRequest(BaseModel):

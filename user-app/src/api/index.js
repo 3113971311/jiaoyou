@@ -2,6 +2,44 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 const api = axios.create({ baseURL: '/api', timeout: 15000 })
+const refreshClient = axios.create({ baseURL: '/api', timeout: 15000 })
+let refreshPromise = null
+
+function clearUserAuth() {
+  localStorage.removeItem('user_token')
+  localStorage.removeItem('user_refresh_token')
+}
+
+function shouldSkipRefresh(url = '') {
+  return [
+    '/auth/login',
+    '/auth/register',
+    '/auth/send-verify-code',
+    '/auth/reset-password',
+    '/auth/refresh',
+  ].some((path) => url.includes(path))
+}
+
+async function refreshUserToken() {
+  if (!refreshPromise) {
+    const refreshToken = localStorage.getItem('user_refresh_token')
+    if (!refreshToken) throw new Error('missing user refresh token')
+    refreshPromise = refreshClient.post('/auth/refresh', { refresh_token: refreshToken })
+      .then((res) => {
+        localStorage.setItem('user_token', res.data.access_token)
+        localStorage.setItem('user_refresh_token', res.data.refresh_token)
+        return res.data.access_token
+      })
+      .catch((error) => {
+        clearUserAuth()
+        throw error
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
 
 api.interceptors.request.use(c => {
   const token = localStorage.getItem('user_token')
@@ -9,10 +47,30 @@ api.interceptors.request.use(c => {
   return c
 })
 
-api.interceptors.response.use(r => r, e => {
-  if (e.response?.status === 401) { localStorage.clear(); window.location.href = '/login' }
-  return Promise.reject(e)
-})
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config || {}
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !shouldSkipRefresh(originalRequest.url)
+    ) {
+      originalRequest._retry = true
+      try {
+        const token = await refreshUserToken()
+        originalRequest.headers = originalRequest.headers || {}
+        originalRequest.headers.Authorization = `Bearer ${token}`
+        return api(originalRequest)
+      } catch (refreshError) {
+        clearUserAuth()
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      }
+    }
+    return Promise.reject(error)
+  },
+)
 
 // Auth
 export const login = (data) => api.post('/auth/login', data)
@@ -63,10 +121,12 @@ export const uploadChatImage = (data) => api.post('/upload/chat-image', data)
 export const redeemCard = (data) => api.post('/cards/redeem', data)
 export const vipStatus = () => api.get('/vip/status')
 export const vipHistory = () => api.get('/vip/history')
+export const vipPlans = () => api.get('/vip/plans')
 export const createPaymentOrder = (params) => api.post('/payment/orders', null, { params })
 export const alipayPay = (data) => api.post('/payment/alipay/pay', data)
 export const devPay = (data) => api.post('/payment/dev-pay', data)
 export const getPaymentOrder = (id) => api.get(`/payment/orders/${id}`)
+export const submitPaymentOrderNo = (id, data) => api.post(`/payment/orders/${id}/submit-order-no`, data, { timeout: 70000 })
 
 // Reports
 export const submitReport = (data) => api.post('/reports', data)

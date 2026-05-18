@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, ForeignKey, UniqueConstraint, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, ForeignKey, UniqueConstraint, Index, inspect
+from sqlalchemy.orm import Session, relationship
 from sqlalchemy.sql import func
 from database import engine
 from sqlalchemy.orm import declarative_base
@@ -241,19 +241,67 @@ class VipOrder(Base):
     user = relationship("User", back_populates="vip_orders")
 
 
+class VipPlan(Base):
+    __tablename__ = "vip_plans"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    days = Column(Integer, unique=True, nullable=False)
+    price = Column(Float, nullable=False)
+    title = Column(String(50))
+    description = Column(String(200))
+    badge = Column(String(20))
+    payment_qr_url = Column(String(500))
+    first_discount_rate = Column(Float, default=0)
+    first_discount_qr_url = Column(String(500))
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+
 class PaymentOrder(Base):
     __tablename__ = "payment_orders"
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     plan_days = Column(Integer, nullable=False)
     amount = Column(Float, nullable=False)
+    original_amount = Column(Float)
+    discount_rate = Column(Float, default=0)
+    is_first_discount = Column(Boolean, default=False)
     email = Column(String(255), nullable=False)
     payment_method = Column(String(20), nullable=False)
     trade_no = Column(String(100))
+    payment_qr_url = Column(String(500))
+    submitted_order_no = Column(String(100))
+    verification_message = Column(Text)
+    verified_bill_id = Column(String)
+    last_checked_at = Column(DateTime)
     status = Column(String(20), default="pending")
     card_code = Column(String(50))
     created_at = Column(DateTime, server_default=func.now())
     paid_at = Column(DateTime)
+
+
+class AlipayBill(Base):
+    __tablename__ = "alipay_bills"
+    id = Column(String, primary_key=True)
+    trade_no = Column(String(100), index=True)
+    order_no = Column(String(100), index=True)
+    amount = Column(Float, index=True)
+    amount_text = Column(String(50))
+    posted_at = Column(DateTime, index=True)
+    accounting_type = Column(String(50))
+    biz_description = Column(String(200))
+    payment_memo = Column(Text)
+    remark = Column(Text)
+    counterparty = Column(String(200))
+    operation = Column(String(50))
+    source = Column(String(500))
+    raw_json = Column(Text)
+    captured_at = Column(DateTime)
+    issue_status = Column(String(20), default="pending", index=True)
+    consumed_by_order_id = Column(String, index=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 
 class Report(Base):
@@ -324,5 +372,69 @@ class SiteConfig(Base):
     updated_at = Column(DateTime, server_default=func.now())
 
 
+DEFAULT_VIP_PLANS = [
+    {"days": 7, "price": 9.9, "title": "7 天 VIP", "description": "体验套餐", "badge": "试用", "sort_order": 10},
+    {"days": 30, "price": 29.9, "title": "30 天 VIP", "description": "月度套餐", "badge": "热门", "sort_order": 20},
+    {"days": 90, "price": 69.9, "title": "90 天 VIP", "description": "季度套餐", "badge": "", "sort_order": 30},
+    {"days": 180, "price": 119.9, "title": "180 天 VIP", "description": "半年套餐", "badge": "", "sort_order": 40},
+    {"days": 360, "price": 199.9, "title": "360 天 VIP", "description": "年度套餐", "badge": "最值", "sort_order": 50},
+]
+
+def seed_default_vip_plans():
+    with Session(engine) as db:
+        if db.query(VipPlan).count() > 0:
+            return
+        for item in DEFAULT_VIP_PLANS:
+            db.add(VipPlan(**item))
+        db.commit()
+
+def ensure_payment_order_columns():
+    existing = {col["name"] for col in inspect(engine).get_columns("payment_orders")}
+    wanted = {
+        "original_amount": "FLOAT",
+        "discount_rate": "FLOAT DEFAULT 0",
+        "is_first_discount": "BOOLEAN DEFAULT 0",
+        "payment_qr_url": "TEXT",
+        "submitted_order_no": "TEXT",
+        "verification_message": "TEXT",
+        "verified_bill_id": "TEXT",
+        "last_checked_at": "DATETIME",
+    }
+    with engine.begin() as conn:
+        for name, ddl in wanted.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE payment_orders ADD COLUMN {name} {ddl}")
+
+
+def ensure_vip_plan_columns():
+    existing = {col["name"] for col in inspect(engine).get_columns("vip_plans")}
+    wanted = {
+        "payment_qr_url": "TEXT",
+        "first_discount_rate": "FLOAT DEFAULT 0",
+        "first_discount_qr_url": "TEXT",
+    }
+    with engine.begin() as conn:
+        for name, ddl in wanted.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE vip_plans ADD COLUMN {name} {ddl}")
+
+
+def ensure_alipay_bill_columns():
+    existing = {col["name"] for col in inspect(engine).get_columns("alipay_bills")}
+    wanted = {
+        "issue_status": "TEXT DEFAULT 'pending'",
+    }
+    with engine.begin() as conn:
+        for name, ddl in wanted.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE alipay_bills ADD COLUMN {name} {ddl}")
+        if "issue_status" in existing or "issue_status" in wanted:
+            conn.exec_driver_sql("UPDATE alipay_bills SET issue_status = 'pending' WHERE issue_status IS NULL OR issue_status = ''")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    ensure_vip_plan_columns()
+    ensure_payment_order_columns()
+    ensure_alipay_bill_columns()
+    seed_default_vip_plans()
