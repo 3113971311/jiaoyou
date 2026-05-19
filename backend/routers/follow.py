@@ -44,4 +44,12 @@ def get_followers(cursor: str = "", limit: int = 20, user: User = Depends(get_cu
 def follow_status(target_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     i_follow = db.query(Follow).filter(Follow.follower_id == user.id, Follow.followed_id == target_id).first()
     they_follow = db.query(Follow).filter(Follow.follower_id == target_id, Follow.followed_id == user.id).first()
-    return {"i_follow": bool(i_follow), "they_follow": bool(they_follow), "mutual": bool(i_follow and they_follow)}
+    follower_count = db.query(Follow).filter(Follow.followed_id == target_id).count()
+    following_count = db.query(Follow).filter(Follow.follower_id == target_id).count()
+    return {
+        "i_follow": bool(i_follow),
+        "they_follow": bool(they_follow),
+        "mutual": bool(i_follow and they_follow),
+        "follower_count": follower_count,
+        "following_count": following_count,
+    }

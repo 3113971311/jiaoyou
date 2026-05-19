@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMe } from '../api'
+import { clearAdminAuth, getMe } from '../api'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const isLoggedIn = computed(() => !!user.value)
@@ -11,15 +11,13 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = r.data
       return true
     } catch {
-      localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_refresh_token')
+      clearAdminAuth()
       user.value = null
       return false
     }
   }
   function logout() {
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_refresh_token')
+    clearAdminAuth()
     user.value = null
     window.location.href = '/#/login'
   }

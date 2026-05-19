@@ -8,13 +8,14 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from auth import get_admin_user, get_current_user
-from config import UPLOAD_DIR
+from config import ENABLE_DEV_PAYMENT, UPLOAD_DIR
 from database import get_db
 from models import AlipayBill, Card, CardBatch, PaymentOrder, User, VipOrder, VipPlan
 from schemas import BatchBillStatusRequest, RedeemCardRequest, SubmitOrderNoRequest, VipPlanRequest
 from utils.alipay_monitor import launch_login_window, poll_match_order, sync_bills_once
-from utils.card_code import generate_code, hash_text
+from utils.card_code import generate_code, hash_candidates, hash_text
 from utils.mailer import send_mail
+from utils.uploads import IMAGE_EXTENSIONS, read_validated_upload
 
 router = APIRouter(tags=["payment"])
 
@@ -258,8 +259,8 @@ def fulfill_order(order: PaymentOrder, bill: AlipayBill | None, submitted_order_
 
 @router.post("/cards/redeem")
 def redeem(req: RedeemCardRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    h = hash_text(req.code)
-    card = db.query(Card).filter(Card.code_hash == h).first()
+    hashes = hash_candidates(req.code)
+    card = db.query(Card).filter(Card.code_hash.in_(hashes)).first()
     if not card:
         raise HTTPException(400, "无效的卡密")
     if card.status != "unused":
@@ -488,6 +489,8 @@ async def alipay_notify():
 
 @router.post("/payment/dev-pay")
 def dev_pay(order_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not ENABLE_DEV_PAYMENT:
+        raise HTTPException(404, "开发支付仅在调试环境开放")
     order = db.query(PaymentOrder).filter(PaymentOrder.id == order_id, PaymentOrder.user_id == user.id).first()
     if not order:
         raise HTTPException(404, "订单不存在")
@@ -526,17 +529,25 @@ async def admin_upload_vip_plan_qr(
     file: UploadFile = File(...),
     admin: User = Depends(get_admin_user),
 ):
+    upload = await read_validated_upload(
+        file,
+        max_bytes=5 * 1024 * 1024,
+        allowed_kinds={"image"},
+        allowed_extensions=IMAGE_EXTENSIONS,
+        fallback_extension=".png",
+        label="收款码图片",
+    )
     if not file.filename:
         raise HTTPException(400, "请选择图片文件")
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(400, "只能上传图片文件")
-    ext = os.path.splitext(file.filename)[1] or ".png"
+    ext = upload["ext"]
     fname = f"{uuid.uuid4()}{ext}"
     public_dir = os.path.join(UPLOAD_DIR, "public", "payment-qr")
     os.makedirs(public_dir, exist_ok=True)
     fpath = os.path.join(public_dir, fname)
     with open(fpath, "wb") as f:
-        f.write(await file.read())
+        f.write(upload["content"])
     return {"url": f"/public/payment-qr/{fname}"}
 
 

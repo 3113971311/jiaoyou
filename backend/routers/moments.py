@@ -6,6 +6,8 @@ from auth import get_current_user, get_vip_user, get_admin_user
 import os, uuid
 from config import UPLOAD_DIR
 from datetime import datetime
+from utils.file_access import resolve_upload_path
+from utils.uploads import IMAGE_EXTENSIONS, read_validated_upload
 
 router = APIRouter(tags=["moments"])
 
@@ -45,13 +47,20 @@ async def create_moment(content_text: str = Form(""), images: list[UploadFile] =
 
     for i, img in enumerate(images):
         if not img.filename: continue
-        ext = os.path.splitext(img.filename)[1] or ".jpg"
+        upload = await read_validated_upload(
+            img,
+            max_bytes=10 * 1024 * 1024,
+            allowed_kinds={"image"},
+            allowed_extensions=IMAGE_EXTENSIONS,
+            fallback_extension=".jpg",
+            label="动态图片",
+        )
+        ext = upload["ext"]
         fname = f"{uuid.uuid4()}{ext}"
         staging_dir = os.path.join(UPLOAD_DIR, "staging", "moment")
         os.makedirs(staging_dir, exist_ok=True)
         fpath = os.path.join(staging_dir, fname)
-        content = await img.read()
-        with open(fpath, "wb") as f: f.write(content)
+        with open(fpath, "wb") as f: f.write(upload["content"])
         rel_path = f"/staging/moment/{fname}"
         db.add(MomentImage(moment_id=moment.id, image_url=rel_path, thumbnail_url=rel_path, sort_order=i))
         db.add(ReviewQueue(image_url=rel_path, image_type="moment", related_id=moment.id, submitted_by=user.id))
@@ -227,12 +236,12 @@ def admin_delete_moment(moment_id: str, admin: User = Depends(get_admin_user), d
     if not m: raise HTTPException(404)
     for img in m.images:
         if img.image_url:
-            fpath = os.path.join(UPLOAD_DIR, img.image_url.lstrip("/"))
+            fpath = resolve_upload_path(img.image_url, allowed_prefixes=("staging", "public"))
             if os.path.exists(fpath): os.remove(fpath)
         db.query(ReviewQueue).filter(ReviewQueue.image_url == img.image_url).delete()
     for img in m.images:
         if img.public_url:
-            fpath = os.path.join(UPLOAD_DIR, img.public_url.lstrip("/"))
+            fpath = resolve_upload_path(img.public_url, allowed_prefixes=("public",))
             if os.path.exists(fpath): os.remove(fpath)
     db.delete(m)
     db.commit()

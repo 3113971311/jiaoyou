@@ -97,7 +97,7 @@
         <el-form-item label="昵称"><el-input v-model="form.nickname" /></el-form-item>
         <el-form-item label="性别"><el-select v-model="form.gender" style="width:100%"><el-option label="男" value="male" /><el-option label="女" value="female" /></el-select></el-form-item>
         <el-form-item v-if="!editingIsAdmin" label="管理员"><el-switch v-model="form.is_admin" active-text="设为站长" inactive-text="普通用户" /></el-form-item>
-        <el-form-item label="VIP天数"><el-input-number v-model="form.vip_days" :min="0" placeholder="赠送VIP天数" /></el-form-item>
+        <el-form-item label="VIP天数"><el-input-number v-model="form.vip_days" :min="0" placeholder="设置剩余VIP天数" /></el-form-item>
         <el-form-item v-if="!editingIsAdmin" label="封禁"><el-switch v-model="form.is_banned" active-text="封禁" inactive-text="正常" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showForm=false">取消</el-button><el-button type="primary" @click="submit" :loading="saving">保存</el-button></template>
@@ -151,8 +151,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
-import { adminListUsers, adminCreateUser, adminUpdateUser, adminDeleteUser, adminToggleStatus, adminRemoveVip, adminWarnUser } from '../api'
-import { getUser } from '../api'
+import { adminListUsers, adminCreateUser, adminUpdateUser, adminDeleteUser, adminToggleStatus, adminRemoveVip, adminWarnUser, adminVerifyPhotoUrl, getUser } from '../api'
 import api from '../api'
 
 const authStore = useAuthStore()
@@ -170,6 +169,14 @@ const showDetailDlg = ref(false)
 const detailUser = ref(null)
 const form = reactive({ username:'',email:'',password:'',nickname:'',gender:'',is_admin:false,vip_days:0,is_banned:false })
 
+function getRemainingVipDays(vipExpiresAt) {
+  if (!vipExpiresAt) return 0
+  const expire = new Date(vipExpiresAt)
+  const now = new Date()
+  if (Number.isNaN(expire.getTime()) || expire <= now) return 0
+  return Math.ceil((expire.getTime() - now.getTime()) / 86400000)
+}
+
 load()
 async function load() {
   try { const r = await adminListUsers({ search:search.value, status:statusFilter.value||undefined, page:page.value }); users.value=r.data.items||[]; total.value=r.data.total||0 } catch {}
@@ -182,13 +189,30 @@ function showCreate() {
 }
 function editUser(row) {
   editingId.value = row.id; editingIsAdmin.value = row.is_admin
-  Object.assign(form, { username:row.username,email:row.email,password:'',nickname:row.nickname||'',gender:row.gender||'',is_admin:row.is_admin,vip_days:0,is_banned:row.status==='banned' })
+  Object.assign(form, {
+    username:row.username,
+    email:row.email,
+    password:'',
+    nickname:row.nickname||'',
+    gender:row.gender||'',
+    is_admin:row.is_admin,
+    vip_days:getRemainingVipDays(row.vip_expires_at),
+    is_banned:row.status==='banned',
+  })
   showForm.value = true
 }
 async function submit() {
   saving.value = true
   try {
-    const body = { username:form.username, email:form.email, nickname:form.nickname, gender:form.gender, is_admin:form.is_admin, status:form.is_banned?'banned':'active' }
+    const body = {
+      username:form.username,
+      email:form.email,
+      nickname:form.nickname,
+      gender:form.gender,
+      is_admin:form.is_admin,
+      status:form.is_banned?'banned':'active',
+      vip_days:Number(form.vip_days || 0),
+    }
     const pwdChanged = !!form.password
     if (pwdChanged) body.password = form.password
     if (editingId.value) {
@@ -199,7 +223,6 @@ async function submit() {
         ElMessageBox.alert('账号或密码已修改，请重新登录', '提示', { confirmButtonText: '确定', callback: () => { authStore.logout() } })
       }
     } else {
-      body.vip_days = form.vip_days
       await adminCreateUser(body)
       ElMessage.success('已创建')
     }
@@ -216,9 +239,7 @@ async function setStatus(row, status) {
   } catch {}
 }
 function verifyPhotoUrl(p) {
-  if (!p) return ''
-  const t = localStorage.getItem('admin_token') || ''
-  return `/api/verify/photo?path=${encodeURIComponent(p)}&token=${t}`
+  return adminVerifyPhotoUrl(p)
 }
 async function showDetail(row) { try { const r = await getUser(row.id); detailUser.value = r.data; showDetailDlg.value = true } catch {} }
 function action(cmd, row) {

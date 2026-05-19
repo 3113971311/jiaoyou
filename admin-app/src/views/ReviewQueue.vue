@@ -122,7 +122,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adminReviewQueue, adminApprove, adminReject, adminBatchReview, adminBatchDelete, adminImageUrl } from '../api'
+import { adminReviewQueue, adminApprove, adminReject, adminBatchReview, adminBatchDelete, adminImageUrl, adminVerifyPhotoUrl } from '../api'
 import api from '../api'
 
 // ── Tab ──
@@ -174,9 +174,7 @@ const verifyPage = ref(1)
 const verifyTotal = ref(0)
 
 function verifyPhotoUrl(p) {
-  if (!p) return ''
-  const t = localStorage.getItem('admin_token') || ''
-  return `/api/verify/photo?path=${encodeURIComponent(p)}&token=${t}`
+  return adminVerifyPhotoUrl(p)
 }
 async function loadVerifications() {
   try {

@@ -101,7 +101,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { login, register, resetPwd, sendCode } from '../api'
+import { login, register, resetPwd, sendCode, setUserAuthTokens } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -127,8 +127,7 @@ function startCountdown() {
 }
 
 function saveTokens(data) {
-  localStorage.setItem('user_token', data.access_token || data.accessToken || '')
-  localStorage.setItem('user_refresh_token', data.refresh_token || '')
+  setUserAuthTokens(data.access_token || data.accessToken || '', data.refresh_token || '')
 }
 
 async function sendRegisterCode() {

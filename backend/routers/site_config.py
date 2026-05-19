@@ -8,19 +8,24 @@ from auth import get_admin_user
 router = APIRouter(tags=["site_config"])
 
 PAYMENT_CONFIG_PREFIXES = ("alipay_", "wechat_")
+PUBLIC_CONFIG_KEYS = {
+    "announcement_enabled",
+    "announcement_text",
+    "home_banners",
+    "home_notice",
+    "site_name",
+    "site_subtitle",
+}
 
 def is_payment_config_key(key: str) -> bool:
     return key.startswith(PAYMENT_CONFIG_PREFIXES)
 
 @router.get("/site-config")
 def get_configs(keys: str = "", db: Session = Depends(get_db)):
-    q = db.query(SiteConfig)
+    q = db.query(SiteConfig).filter(SiteConfig.config_key.in_(PUBLIC_CONFIG_KEYS))
     if keys:
-        allowed_keys = [key for key in keys.split(",") if not is_payment_config_key(key)]
+        allowed_keys = [key for key in keys.split(",") if key in PUBLIC_CONFIG_KEYS]
         q = q.filter(SiteConfig.config_key.in_(allowed_keys))
-    else:
-        for prefix in PAYMENT_CONFIG_PREFIXES:
-            q = q.filter(~SiteConfig.config_key.startswith(prefix))
     result = {c.config_key: {"value": c.config_value, "type": c.value_type} for c in q.all()}
     return result
 

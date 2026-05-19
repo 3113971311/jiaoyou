@@ -75,3 +75,4 @@ class UpdateUserRequest(BaseModel):
     password: Optional[str] = None; nickname: Optional[str] = None
     gender: Optional[str] = None; is_admin: Optional[bool] = None
     status: Optional[str] = None; vip_expires_at: Optional[str] = None
+    vip_days: Optional[int] = None

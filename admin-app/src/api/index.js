@@ -4,10 +4,24 @@ const refreshClient = axios.create({ baseURL: '/api', timeout: 15000 })
 
 let refreshPromise = null
 
-function clearAdminAuth() {
+function syncCookie(name, value) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${name}=${encodeURIComponent(value || '')}; Path=/; Max-Age=${value ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax${secure}`
+}
+
+export function setAdminAuthTokens(accessToken, refreshToken = '') {
+  localStorage.setItem('admin_token', accessToken || '')
+  localStorage.setItem('admin_refresh_token', refreshToken || '')
+  syncCookie('admin_token', accessToken || '')
+}
+
+export function clearAdminAuth() {
   localStorage.removeItem('admin_token')
   localStorage.removeItem('admin_refresh_token')
+  syncCookie('admin_token', '')
 }
+
+syncCookie('admin_token', localStorage.getItem('admin_token') || '')
 
 function shouldSkipRefresh(url = '') {
   return ['/auth/login', '/auth/refresh'].some((path) => url.includes(path))
@@ -19,8 +33,7 @@ async function refreshAdminToken() {
     if (!refreshToken) throw new Error('missing admin refresh token')
     refreshPromise = refreshClient.post('/auth/refresh', { refresh_token: refreshToken })
       .then((res) => {
-        localStorage.setItem('admin_token', res.data.access_token)
-        localStorage.setItem('admin_refresh_token', res.data.refresh_token)
+        setAdminAuthTokens(res.data.access_token, res.data.refresh_token)
         return res.data.access_token
       })
       .catch((error) => {
@@ -88,8 +101,9 @@ export const adminBatchDetail = (id, p) => api.get(`/admin/cards/batches/${id}`,
 export const adminDeleteCard = (id) => api.delete(`/admin/cards/${id}`)
 export const adminExportBatch = (id) => api.get(`/admin/cards/batches/${id}/export`)
 export const adminDeleteBatch = (id) => api.delete(`/admin/cards/batches/${id}`)
-export const adminChats = () => api.get('/admin/chats')
+export const adminChats = (p) => api.get('/admin/chats', { params: p })
 export const adminChatMsgs = (id) => api.get(`/admin/chats/${id}/messages`)
+export const adminChatCalls = (id) => api.get(`/admin/chats/${id}/calls`)
 export const adminReports = (p) => api.get('/admin/reports', { params: p })
 export const adminHandleReport = (id, d) => api.post(`/admin/reports/${id}/handle`, d)
 export const adminSiteConfigs = () => api.get('/admin/site-configs')
@@ -116,4 +130,5 @@ export const adminGetMoment = (id) => api.get(`/admin/moments/${id}`)
 export const adminUpdateMoment = (id, d) => api.put(`/admin/moments/${id}`, d)
 export const adminDeleteMoment = (id) => api.delete(`/admin/moments/${id}`)
 export const adminReviewMoment = (id, d) => api.post(`/admin/moments/${id}/review`, d)
-export const adminImageUrl = (p) => { const t = localStorage.getItem('admin_token')||''; return `/api/admin/image-preview?path=${encodeURIComponent(p)}&token=${t}` }
+export const adminImageUrl = (p) => (p ? `/api/admin/image-preview?path=${encodeURIComponent(p)}` : '')
+export const adminVerifyPhotoUrl = (p) => (p ? `/api/verify/photo?path=${encodeURIComponent(p)}` : '')

@@ -75,6 +75,11 @@ class Conversation(Base):
     user1_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user2_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     last_message_at = Column(DateTime)
+    deleted_for_user1 = Column(Boolean, default=False)
+    deleted_for_user2 = Column(Boolean, default=False)
+    contact_blocked = Column(Boolean, default=False)
+    blocked_at = Column(DateTime)
+    blocked_by_user_id = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (UniqueConstraint("user1_id", "user2_id"),)
@@ -88,11 +93,41 @@ class Message(Base):
     content = Column(Text)
     content_type = Column(String(20), default="text")
     image_url = Column(String(500))
+    media_url = Column(String(500))
+    thumbnail_url = Column(String(500))
+    duration_seconds = Column(Integer)
+    call_session_id = Column(String, index=True)
+    extra_json = Column(Text)
+    deleted_at = Column(DateTime)
+    deleted_by_user_id = Column(String)
     status = Column(String(20), default="sent")
     created_at = Column(DateTime, server_default=func.now())
 
     conversation = relationship("Conversation", backref="messages")
     sender_view = relationship("User", back_populates="sent_messages", foreign_keys=[sender_id])
+
+
+class ChatCallSession(Base):
+    __tablename__ = "chat_call_sessions"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    conversation_id = Column(String, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    caller_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    callee_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    call_type = Column(String(10), nullable=False)  # audio | video
+    status = Column(String(20), default="ringing", index=True)  # ringing | active | ended | rejected | cancelled | missed
+    offer_sdp = Column(Text)
+    answer_sdp = Column(Text)
+    caller_candidates_json = Column(Text, default="[]")
+    callee_candidates_json = Column(Text, default="[]")
+    started_at = Column(DateTime)
+    answered_at = Column(DateTime)
+    ended_at = Column(DateTime)
+    ended_by_user_id = Column(String)
+    recording_url = Column(String(500))
+    recording_type = Column(String(20))
+    duration_seconds = Column(Integer)
+    summary_message_id = Column(String, index=True)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class Moment(Base):
@@ -406,6 +441,42 @@ def ensure_payment_order_columns():
                 conn.exec_driver_sql(f"ALTER TABLE payment_orders ADD COLUMN {name} {ddl}")
 
 
+def ensure_conversation_columns():
+    existing = {col["name"] for col in inspect(engine).get_columns("conversations")}
+    wanted = {
+        "deleted_for_user1": "BOOLEAN DEFAULT 0",
+        "deleted_for_user2": "BOOLEAN DEFAULT 0",
+        "contact_blocked": "BOOLEAN DEFAULT 0",
+        "blocked_at": "DATETIME",
+        "blocked_by_user_id": "TEXT",
+    }
+    with engine.begin() as conn:
+        for name, ddl in wanted.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE conversations ADD COLUMN {name} {ddl}")
+
+
+def ensure_message_columns():
+    existing = {col["name"] for col in inspect(engine).get_columns("messages")}
+    wanted = {
+        "media_url": "TEXT",
+        "thumbnail_url": "TEXT",
+        "duration_seconds": "INTEGER",
+        "call_session_id": "TEXT",
+        "extra_json": "TEXT",
+        "deleted_at": "DATETIME",
+        "deleted_by_user_id": "TEXT",
+    }
+    with engine.begin() as conn:
+        for name, ddl in wanted.items():
+            if name not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE messages ADD COLUMN {name} {ddl}")
+        if "call_session_id" in wanted:
+            index_names = {idx["name"] for idx in inspect(engine).get_indexes("messages")}
+            if "ix_messages_call_session_id" not in index_names:
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_messages_call_session_id ON messages (call_session_id)")
+
+
 def ensure_vip_plan_columns():
     existing = {col["name"] for col in inspect(engine).get_columns("vip_plans")}
     wanted = {
@@ -434,6 +505,8 @@ def ensure_alipay_bill_columns():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    ensure_conversation_columns()
+    ensure_message_columns()
     ensure_vip_plan_columns()
     ensure_payment_order_columns()
     ensure_alipay_bill_columns()

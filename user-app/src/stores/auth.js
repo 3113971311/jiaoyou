@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getMe, getNotifications } from '../api'
+import { clearUserAuth, getMe, getNotifications } from '../api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -24,10 +24,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    localStorage.removeItem('user_token')
-    localStorage.removeItem('user_refresh_token')
+    clearUserAuth()
     user.value = null
-    window.location.href = '/login'
+    window.location.href = '/#/login'
   }
 
   return { user, unreadCount, latestNotif, isLoggedIn, isAdmin, isVip, fetchMe, pollUnread, logout }

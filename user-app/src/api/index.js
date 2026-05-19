@@ -5,10 +5,24 @@ const api = axios.create({ baseURL: '/api', timeout: 15000 })
 const refreshClient = axios.create({ baseURL: '/api', timeout: 15000 })
 let refreshPromise = null
 
-function clearUserAuth() {
+function syncCookie(name, value) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${name}=${encodeURIComponent(value || '')}; Path=/; Max-Age=${value ? 60 * 60 * 24 * 30 : 0}; SameSite=Lax${secure}`
+}
+
+export function setUserAuthTokens(accessToken, refreshToken = '') {
+  localStorage.setItem('user_token', accessToken || '')
+  localStorage.setItem('user_refresh_token', refreshToken || '')
+  syncCookie('user_token', accessToken || '')
+}
+
+export function clearUserAuth() {
   localStorage.removeItem('user_token')
   localStorage.removeItem('user_refresh_token')
+  syncCookie('user_token', '')
 }
+
+syncCookie('user_token', localStorage.getItem('user_token') || '')
 
 function shouldSkipRefresh(url = '') {
   return [
@@ -26,8 +40,7 @@ async function refreshUserToken() {
     if (!refreshToken) throw new Error('missing user refresh token')
     refreshPromise = refreshClient.post('/auth/refresh', { refresh_token: refreshToken })
       .then((res) => {
-        localStorage.setItem('user_token', res.data.access_token)
-        localStorage.setItem('user_refresh_token', res.data.refresh_token)
+        setUserAuthTokens(res.data.access_token, res.data.refresh_token)
         return res.data.access_token
       })
       .catch((error) => {
@@ -64,7 +77,7 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         clearUserAuth()
-        window.location.href = '/login'
+        window.location.href = '/#/login'
         return Promise.reject(refreshError)
       }
     }
@@ -115,6 +128,21 @@ export const matchHistory = () => api.get('/match/history')
 export const getConversations = () => api.get('/conversations')
 export const getMessages = (id) => api.get(`/conversations/${id}/messages`)
 export const createConversation = (data) => api.post('/conversations', data)
+export const deleteConversation = (id) => api.delete(`/conversations/${id}`)
+export const sendChatMessage = (id, data) => api.post(`/chat/send/${id}`, data)
+export const deleteChatMessage = (conversationId, messageId) => api.delete(`/conversations/${conversationId}/messages/${messageId}`)
+export const getActiveCall = (id) => api.get(`/conversations/${id}/active-call`)
+export const createChatCall = (id, data) => api.post(`/conversations/${id}/calls`, data)
+export const getChatCall = (id) => api.get(`/calls/${id}`)
+export const sendCallSignal = (id, data) => api.post(`/calls/${id}/signal`, data)
+export const acceptChatCall = (id) => api.post(`/calls/${id}/accept`)
+export const rejectChatCall = (id) => api.post(`/calls/${id}/reject`)
+export const endChatCall = (id, data) => api.post(`/calls/${id}/end`, data)
+export const attachChatCallRecording = (id, data) => api.post(`/calls/${id}/recording`, data)
+export const uploadChatMedia = (data) => api.post('/upload/chat-media', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+  timeout: 60000,
+})
 export const uploadChatImage = (data) => api.post('/upload/chat-image', data)
 
 // Payment
@@ -124,7 +152,6 @@ export const vipHistory = () => api.get('/vip/history')
 export const vipPlans = () => api.get('/vip/plans')
 export const createPaymentOrder = (params) => api.post('/payment/orders', null, { params })
 export const alipayPay = (data) => api.post('/payment/alipay/pay', data)
-export const devPay = (data) => api.post('/payment/dev-pay', data)
 export const getPaymentOrder = (id) => api.get(`/payment/orders/${id}`)
 export const submitPaymentOrderNo = (id, data) => api.post(`/payment/orders/${id}/submit-order-no`, data, { timeout: 70000 })
 
@@ -172,7 +199,6 @@ export const adminChats = () => api.get('/admin/chats')
 export const adminChatMsgs = (id) => api.get(`/admin/chats/${id}/messages`)
 export const adminReports = (params) => api.get('/admin/reports', { params })
 export const adminHandleReport = (id, data) => api.post(`/admin/reports/${id}/handle`, data)
-export const adminSensitiveWords = () => api.get('/admin/sensitive-words')
 export const adminSiteConfigs = () => api.get('/admin/site-configs')
 export const adminUpdateConfig = (key, data) => api.put(`/admin/site-configs/${key}`, data)
 
@@ -182,6 +208,5 @@ export const userImageUrl = (p) => {
   // 公开图片直接返回
   if (p.startsWith('/public/')) return p
   // staging 或其他受保护图片通过 /api/image 访问
-  const t = localStorage.getItem('user_token') || ''
-  return `/api/image?path=${encodeURIComponent(p)}&token=${t}`
+  return `/api/image?path=${encodeURIComponent(p)}`
 }

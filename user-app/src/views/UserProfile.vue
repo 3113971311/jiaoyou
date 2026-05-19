@@ -35,7 +35,17 @@ onMounted(async ()=>{
   try { const [u,s] = await Promise.all([getUser(uid),followStatus(uid)]); user.value=u.data; fs.value=s.data } catch {}
 })
 async function toggleFollow() {
-  try { if(fs.value.i_follow) { await unfollow(uid); fs.value.i_follow=false } else { await follow(uid); fs.value.i_follow=true } } catch {}
+  try {
+    if (fs.value.i_follow) {
+      await unfollow(uid)
+      fs.value.i_follow = false
+      fs.value.follower_count = Math.max(0, Number(fs.value.follower_count || 0) - 1)
+    } else {
+      await follow(uid)
+      fs.value.i_follow = true
+      fs.value.follower_count = Number(fs.value.follower_count || 0) + 1
+    }
+  } catch {}
 }
 async function startChat() { try { const r=await createConversation({target_user_id:uid}); router.push('/chat/'+r.data.id) } catch(e) { ElMessage.error(e.response?.data?.detail||'操作失败') } }
 async function block() { try { await blockUser(uid); ElMessage.success('已拉黑'); router.back() } catch {} }

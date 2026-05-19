@@ -40,17 +40,13 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { clearAdminAuth, setAdminAuthTokens } from '../api'
 
 const router = useRouter()
 const account = ref('')
 const password = ref('')
 const loading = ref(false)
 const errMsg = ref('')
-
-function clearAdminAuth() {
-  localStorage.removeItem('admin_token')
-  localStorage.removeItem('admin_refresh_token')
-}
 
 async function doLogin() {
   errMsg.value = ''
@@ -71,8 +67,7 @@ async function doLogin() {
       return
     }
 
-    localStorage.setItem('admin_token', res.data.access_token)
-    localStorage.setItem('admin_refresh_token', res.data.refresh_token || '')
+    setAdminAuthTokens(res.data.access_token, res.data.refresh_token || '')
 
     const me = await axios.get('/api/auth/me', {
       headers: { Authorization: `Bearer ${res.data.access_token}` },
