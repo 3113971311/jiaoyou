@@ -123,9 +123,14 @@ def monitor_status():
     return service_request("GET", "/status", timeout_seconds=5)
 
 
-def launch_login_window():
+def launch_login_window(account: str = "", password: str = ""):
     ensure_service_running()
-    return service_request("POST", "/login", timeout_seconds=15)
+    payload = {}
+    if account.strip():
+        payload["account"] = account.strip()
+    if password.strip():
+        payload["password"] = password
+    return service_request("POST", "/login", json_body=payload or None, timeout_seconds=60)
 
 
 def sync_bills_once():

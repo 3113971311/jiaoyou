@@ -121,6 +121,7 @@ export const adminUploadVipPlanQr = (file) => {
   })
 }
 export const adminAlipayLogin = () => api.post('/admin/alipay/login')
+export const adminAlipayStatus = () => api.get('/admin/alipay/status')
 export const adminSyncAlipayBills = () => api.post('/admin/alipay/bills/sync', null, { timeout: 70000 })
 export const adminAlipayBills = (p) => api.get('/admin/alipay/bills', { params: p })
 export const adminAlipayBillDetail = (id) => api.get(`/admin/alipay/bills/${id}`)

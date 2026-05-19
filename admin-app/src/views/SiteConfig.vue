@@ -45,6 +45,8 @@ const LABELS = {
   smtp_user:   { label: '发件邮箱',        desc: '用于发送验证码和通知', group: '邮件服务' },
   smtp_pass:   { label: '邮箱授权码',      desc: 'QQ邮箱 -> 设置 -> 账户 -> POP3/SMTP', group: '邮件服务', type: 'password' },
   amap_key:    { label: '高德地图 Key',    desc: '高德开放平台 Web 服务 Key，用于 IP 定位', group: '定位服务' },
+  bill_monitor_alipay_account: { label: '支付宝登录账号', desc: '账单监测自动登录使用的支付宝账号（邮箱或手机号）', group: '账单监测' },
+  bill_monitor_alipay_password: { label: '支付宝登录密码', desc: '账单监测自动登录使用的支付宝密码', group: '账单监测', type: 'password' },
   site_name:   { label: '网站名称',        desc: '显示在页面标题和导航栏', group: '基础设置' },
   site_subtitle: { label: '网站副标题',    desc: '显示在首页标题下方', group: '基础设置' },
   announcement_enabled: { label: '启用公告', desc: '是否显示全站顶部公告', group: '前端展示' },
@@ -53,7 +55,7 @@ const LABELS = {
   home_notice: { label: '首页文字公告',    desc: '显示在首页动态上方的文字', group: '前端展示', type: 'textarea' },
 }
 
-const GROUPS = ['基础设置', '前端展示', '邮件服务', '定位服务']
+const GROUPS = ['基础设置', '前端展示', '邮件服务', '定位服务', '账单监测']
 const configs = ref([])
 const showEdit = ref(false)
 const editingKey = ref('')

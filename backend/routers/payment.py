@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from auth import get_admin_user, get_current_user
 from config import ENABLE_DEV_PAYMENT, UPLOAD_DIR
 from database import get_db
-from models import AlipayBill, Card, CardBatch, PaymentOrder, User, VipOrder, VipPlan
+from models import AlipayBill, Card, CardBatch, PaymentOrder, SiteConfig, User, VipOrder, VipPlan
 from schemas import BatchBillStatusRequest, RedeemCardRequest, SubmitOrderNoRequest, VipPlanRequest
-from utils.alipay_monitor import launch_login_window, poll_match_order, sync_bills_once
+from utils.alipay_monitor import launch_login_window, monitor_status, poll_match_order, sync_bills_once
 from utils.card_code import generate_code, hash_candidates, hash_text
 from utils.mailer import send_mail
 from utils.uploads import IMAGE_EXTENSIONS, read_validated_upload
@@ -91,6 +91,11 @@ def bill_json(bill):
         "direction": "expense" if amount is not None and amount < 0 else "income",
         "consumed_by_order_id": bill.consumed_by_order_id,
     }
+
+
+def get_site_config_value(db: Session, key: str) -> str:
+    cfg = db.query(SiteConfig).filter(SiteConfig.config_key == key).first()
+    return (cfg.config_value or "").strip() if cfg else ""
 
 
 def validate_plan(req: VipPlanRequest):
@@ -552,9 +557,24 @@ async def admin_upload_vip_plan_qr(
 
 
 @router.post("/admin/alipay/login")
-def admin_alipay_login(admin: User = Depends(get_admin_user)):
-    payload = launch_login_window()
-    return {"message": payload.get("message") or "支付宝登录窗口已打开，请扫码登录", "status": payload}
+def admin_alipay_login(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    account = get_site_config_value(db, "bill_monitor_alipay_account")
+    password = get_site_config_value(db, "bill_monitor_alipay_password")
+    payload = launch_login_window(account, password)
+    return {
+        "message": payload.get("message") or "支付宝登录窗口已打开",
+        "status": payload,
+        "auto_login_enabled": bool(account and password),
+    }
+
+
+@router.get("/admin/alipay/status")
+def admin_alipay_status(admin: User = Depends(get_admin_user)):
+    try:
+        payload = monitor_status()
+    except RuntimeError as exc:
+        raise HTTPException(500, str(exc))
+    return payload
 
 
 @router.post("/admin/alipay/bills/sync")
